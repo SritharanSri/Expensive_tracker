@@ -18,6 +18,7 @@ export function BudgetScreen() {
   const [showAddBudget, setShowAddBudget] = useState(false);
   const [budgetSaved, setBudgetSaved] = useState(false);
   const [newBudgetAmount, setNewBudgetAmount] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [selectedCat, setSelectedCat] = useState<Category | null>(null);
   const expenseCategories = categories.filter(c => c.type === "expense");
 
