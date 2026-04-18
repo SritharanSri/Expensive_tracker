@@ -299,6 +299,7 @@ export function BudgetScreen() {
               />
             </div>
           </div>
+          <button 
             onClick={() => {
               if (!newBudgetAmount || !selectedCat) return;
               addBudget({ category: selectedCat.id, limit: parseFloat(newBudgetAmount), icon: selectedCat.icon });
