@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://pagead2.googlesyndication.com; connect-src 'self' https://generativelanguage.googleapis.com https://googleads.g.doubleclick.com https://*.googleapis.com wss://*.firebaseio.com https://*.firebaseio.com wss://*.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src 'self' https://googleads.g.doubleclick.com;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googleadservices.com https://www.googletagservices.com; connect-src 'self' https://generativelanguage.googleapis.com https://googleads.g.doubleclick.com https://googleads.g.doubleclick.net https://adservice.google.com https://ep1.adtrafficquality.google https://*.googleapis.com wss://*.firebaseio.com https://*.firebaseio.com wss://*.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src 'self' https://googleads.g.doubleclick.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://tpc.googlesyndication.com;",
           },
         ],
       },
