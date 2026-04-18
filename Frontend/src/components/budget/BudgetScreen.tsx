@@ -10,7 +10,8 @@ import { GlassCard, GradientCard } from "@/components/ui/Cards";
 import { ProgressBar } from "@/components/ui/Progress";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { AlertTriangle, Plus, TrendingDown, CheckCircle2, Flame, Check, Sparkles, BrainCircuit, Trash2 } from "lucide-react";
-import { CATEGORIES, Category } from "@/lib/data";
+import { CATEGORIES } from "@/lib/data";
+import { Category } from "@/context/AppContext";
 
 export function BudgetScreen() {
   const { isDark, budgets, addBudget, deleteBudget, isPremium, currencyConfig, t, triggerPremiumModal, categories } = useApp();
