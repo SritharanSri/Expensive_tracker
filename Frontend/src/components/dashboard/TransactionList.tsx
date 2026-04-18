@@ -6,7 +6,8 @@ import { GlassCard } from "@/components/ui/Cards";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { cn, formatDate } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
-import { CATEGORIES, Transaction } from "@/lib/data";
+import { CATEGORIES } from "@/lib/data";
+import { Transaction } from "@/context/AppContext";
 import { ArrowUpRight, ArrowDownLeft, Search, SlidersHorizontal, ReceiptText } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
