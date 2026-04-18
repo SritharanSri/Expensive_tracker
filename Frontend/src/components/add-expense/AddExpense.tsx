@@ -128,9 +128,7 @@ export function AddExpense() {
   useEffect(() => {
     if (addExpenseInitialMode === "voice" && !autoStarted.current) {
       autoStarted.current = true;
-      setTimeout(() => {
-        handleVoiceToggle();
-      }, 500);
+      // Auto-start is disabled for security/permissions. Voice must be triggered by a direct user tap.
       setAddExpenseInitialMode("manual");
     } else if (addExpenseInitialMode !== "manual") {
       setAddExpenseInitialMode("manual");
@@ -279,6 +277,12 @@ export function AddExpense() {
                 )}>
                   {isAiToolLocked ? "Limit reached" : `${3 - aiToolUsageCount} / 3 remaining`}
                 </span>
+              </div>
+            )}
+
+            {typeof window !== "undefined" && !window.isSecureContext && (
+              <div className="w-full mb-4 px-4 py-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-black uppercase tracking-wider text-center">
+                ⚠️ Secure Connection Required: Use HTTPS for Voice
               </div>
             )}
 

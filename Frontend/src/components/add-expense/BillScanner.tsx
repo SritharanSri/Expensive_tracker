@@ -251,6 +251,11 @@ export function BillScanner({ isDark, onSaved }: BillScannerProps) {
                 <p className={cn("font-bold text-base", isDark ? "text-white" : "text-slate-800")}>
                   AI Receipt Scanner
                 </p>
+                {typeof window !== "undefined" && !window.isSecureContext && (
+                  <div className="mt-2 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[9px] font-black uppercase tracking-wider">
+                    ⚠️ HTTPS Required for Camera
+                  </div>
+                )}
                 <p className={cn("text-sm mt-1", isDark ? "text-slate-400" : "text-slate-500")}>
                   {isAiToolLocked && !isPremium
                     ? "Upgrade to Premium to continue scanning"
