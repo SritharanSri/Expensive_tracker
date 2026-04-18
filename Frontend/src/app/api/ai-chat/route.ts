@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI, Content } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import { z } from "zod";
 import { buildRateLimiter } from "@/lib/rate-limit";
 import { handleApiError } from "@/lib/api-error";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 interface FinancialContext {
   balance: string;
@@ -28,30 +26,30 @@ const FinancialContextSchema = z.object({
 
 const ChatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
-  content: z.string().min(1).max(2000) // 2000 char max length to prevent prompt explosion
+  content: z.string().min(1).max(2000)
 });
 
 const ChatRequestSchema = z.object({
-  messages: z.array(ChatMessageSchema).max(50), // Cap history size
+  messages: z.array(ChatMessageSchema).max(50), 
   financialContext: FinancialContextSchema
 });
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      console.error("[AI_CHAT]: GEMINI_API_KEY is missing from environment variables.");
+      console.error("[AI_CHAT]: GROQ_API_KEY is missing from environment variables.");
       return NextResponse.json(
         { 
           success: false, 
           error: "AI_CONFIG_MISSING",
-          message: "The AI Assistant is not configured on the server. Please check environment variables."
+          message: "The AI Assistant (Groq) is not configured on the server. Please check environment variables."
         }, 
         { status: 503 }
       );
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const groq = new Groq({ apiKey });
     const ip = req.headers.get("x-forwarded-for") || "unknown";
     const rateLimitResponse = checkRateLimit(ip);
     if (rateLimitResponse) return rateLimitResponse;
@@ -76,29 +74,20 @@ Guidelines:
 - If asked about spending predictions or budget tips, use the data above
 - Never make up financial data — only reference what's in the snapshot`;
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash-lite", // 2026 Production Standard
-      systemInstruction: systemInstruction 
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: "system", content: systemInstruction },
+        ...messages.map(msg => ({
+          role: msg.role === "assistant" ? ("assistant" as const) : ("user" as const),
+          content: msg.content
+        }))
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.7,
+      max_tokens: 400,
     });
 
-    // Convert message history to Gemini format (excluding the last message which we'll send as the current prompt)
-    const history: Content[] = messages.slice(0, -1).map(msg => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    }));
-
-    const lastMessage = messages[messages.length - 1];
-
-    const chat = model.startChat({
-      history: history,
-      generationConfig: {
-        maxOutputTokens: 400,
-        temperature: 0.7,
-      },
-    });
-
-    const result = await chat.sendMessage(lastMessage.content);
-    const reply = result.response.text();
+    const reply = chatCompletion.choices[0]?.message?.content || "";
 
     return NextResponse.json({ message: reply });
   } catch (err) {
