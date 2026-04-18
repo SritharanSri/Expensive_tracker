@@ -808,6 +808,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setLanguage,
         currencyConfig,
         t,
+        balance,
         transactions,
         addTransaction,
         removeTransaction: removeTx,
