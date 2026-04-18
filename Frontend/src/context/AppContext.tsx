@@ -134,7 +134,7 @@ export interface AppContextType {
   addFinancialGoal: (goal: Omit<FinancialGoal, "id" | "createdAt" | "conflicts" | "aiInsight">) => void;
   updateFinancialGoalItem: (id: string, updates: Partial<FinancialGoal>) => void;
   deleteFinancialGoalItem: (id: string) => void;
-  contributeToGoal: (id: string, amount: number) => void;
+  contributeToGoal: (id: string, amount: number, linkedIncomeCategoryId?: string) => void;
 
   // Notifications
   notifications: AppNotification[];
@@ -583,7 +583,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, financialGoals, addTransaction]);
 
-  const contributeToGoal = useCallback((id: string, amount: number) => {
+  const contributeToGoal = useCallback((id: string, amount: number, linkedIncomeCategoryId?: string) => {
     let goalName = "Goal Contribution";
     setFinancialGoals((prev) =>
       prev.map((g) => {
@@ -600,8 +600,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addTransaction({
       title: `Contributed to ${goalName}`,
       amount: amount,
-      category: "investment", // fallback category for savings
+      category: "other", // category ID for contributions
       type: "expense",
+      linkedIncomeCategoryId,
       date: new Date(),
       note: "Smart Goal Contribution",
     });

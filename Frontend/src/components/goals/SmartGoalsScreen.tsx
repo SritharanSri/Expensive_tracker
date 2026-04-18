@@ -351,14 +351,18 @@ function GoalCard({
   isPremium: boolean;
   onUpdate: (id: string, updates: Partial<FinancialGoal>) => void;
   onDelete: (id: string) => void;
-  onContribute: (id: string, amount: number) => void;
+  onContribute: (id: string, amount: number, linkedId?: string) => void;
   onWhatIf: (goal: FinancialGoal) => void;
   triggerPremiumModal: (msg: string) => void;
   trackPremiumClick: () => void;
 }) {
+  const { categories } = useApp();
   const [expanded, setExpanded]     = useState(false);
   const [contribute, setContribute] = useState("");
   const [confirmDel, setConfirmDel] = useState(false);
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+
+  const incomeCategories = categories.filter(c => c.type === "income");
 
   const status   = computeStatus(goal, monthlySavings);
   const pct      = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100));
@@ -453,8 +457,36 @@ function GoalCard({
                 )}
 
                 {/* Contribute */}
-                <div className={cn("p-3 rounded-2xl", isDark ? "bg-white/[0.03] border border-white/[0.06]" : "bg-slate-50 border border-slate-100")}>
-                  <p className="text-[9px] font-black uppercase text-slate-500 mb-2">Add Contribution</p>
+                <div className={cn("p-4 rounded-3xl", isDark ? "bg-white/[0.03] border border-white/[0.06]" : "bg-slate-50 border border-slate-100")}>
+                  <p className="text-[9px] font-black uppercase text-slate-500 mb-3">Funding Source & Amount</p>
+                  
+                  {/* Source Picker */}
+                  <div className="flex gap-2 overflow-x-auto pb-3 mb-3 no-scrollbar">
+                    {incomeCategories.map(cat => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setSelectedSourceId(cat.id === selectedSourceId ? null : cat.id)}
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-2xl border transition-all flex-shrink-0",
+                          selectedSourceId === cat.id
+                            ? (isDark ? "bg-indigo-500/20 border-indigo-500/40" : "bg-indigo-50 border-indigo-100 shadow-sm")
+                            : (isDark ? "bg-white/5 border-transparent" : "bg-white border-transparent")
+                        )}
+                      >
+                        <div 
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
+                          style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+                        >
+                          {cat.icon}
+                        </div>
+                        <span className={cn("text-[10px] font-bold", isDark ? "text-white" : "text-slate-900")}>
+                          {cat.name}
+                        </span>
+                        {selectedSourceId === cat.id && <CheckCircle2 size={10} className="text-indigo-500" />}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="flex gap-2">
                     <div className="flex-1 flex items-center gap-1.5">
                       <span className="text-sm font-black text-slate-400">{currencyConfig.symbol}</span>
@@ -462,9 +494,19 @@ function GoalCard({
                         className={cn("w-full text-sm font-bold bg-transparent outline-none placeholder:font-normal",
                           isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-400")} />
                     </div>
-                    <button onClick={() => { if (contribute && Number(contribute) > 0) { onContribute(goal.id, Number(contribute)); setContribute(""); } }}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-black flex-shrink-0">
-                      Add
+                    <button 
+                      onClick={() => { 
+                        if (contribute && Number(contribute) > 0) { 
+                          onContribute(goal.id, Number(contribute), selectedSourceId || undefined); 
+                          setContribute(""); 
+                        } 
+                      }}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-white text-[11px] font-black flex-shrink-0 transition-all active:scale-95",
+                        contribute && Number(contribute) > 0 ? "bg-indigo-600 shadow-lg shadow-indigo-500/30" : "bg-slate-500 opacity-40 cursor-not-allowed"
+                      )}
+                    >
+                      Add Cash
                     </button>
                   </div>
                 </div>
