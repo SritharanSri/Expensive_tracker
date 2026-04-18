@@ -38,6 +38,20 @@ const ChatRequestSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("[AI_CHAT]: GEMINI_API_KEY is missing from environment variables.");
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: "AI_CONFIG_MISSING",
+          message: "The AI Assistant is not configured on the server. Please check environment variables."
+        }, 
+        { status: 503 }
+      );
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
     const ip = req.headers.get("x-forwarded-for") || "unknown";
     const rateLimitResponse = checkRateLimit(ip);
     if (rateLimitResponse) return rateLimitResponse;
@@ -63,7 +77,7 @@ Guidelines:
 - Never make up financial data — only reference what's in the snapshot`;
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash-lite", // 2026 Production Standard
       systemInstruction: systemInstruction 
     });
 

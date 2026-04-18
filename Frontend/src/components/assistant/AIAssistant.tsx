@@ -89,12 +89,25 @@ export function AIAssistant() {
       });
 
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.message, type: "text" }]);
+
+      if (!res.ok) {
+        setMessages((prev) => [
+          ...prev, 
+          { 
+            role: "assistant", 
+            content: data.message || "I'm having trouble connecting right now. Please check if the AI service is correctly configured.", 
+            type: "text" 
+          }
+        ]);
+        return;
+      }
+
+      setMessages((prev) => [...prev, { role: "assistant", content: data.message || data.reply, type: "text" }]);
       incrementAiQuery();
-    } catch {
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, I'm having trouble connecting right now. Please try again.", type: "text" },
+        { role: "assistant", content: "Sorry, I'm having trouble reaching the server. Please try again later.", type: "text" },
       ]);
     } finally {
       setIsTyping(false);
