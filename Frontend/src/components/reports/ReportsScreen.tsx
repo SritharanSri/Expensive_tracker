@@ -19,7 +19,7 @@ import {
   PieChart,
   Pie,
 } from "recharts";
-import { TrendingUp, TrendingDown, DollarSign, Crown, Info, Sparkles } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Crown, Info, Sparkles, Check } from "lucide-react";
 
 export function ReportsScreen() {
   const { isDark, isPremium, currencyConfig, t, transactions, categories } = useApp();
