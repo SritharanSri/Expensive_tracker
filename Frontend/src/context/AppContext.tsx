@@ -564,11 +564,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const deleteFinancialGoalItem = useCallback((id: string) => {
+    const goalToDelete = financialGoals.find(g => g.id === id);
+    
+    if (goalToDelete && goalToDelete.currentAmount > 0) {
+      addTransaction({
+        title: `Refund: ${goalToDelete.name}`,
+        amount: goalToDelete.currentAmount,
+        category: "other",
+        type: "income",
+        date: new Date(),
+        note: `Funds returned from deleted goal: ${goalToDelete.name}`
+      });
+    }
+
     setFinancialGoals((prev) => prev.filter((g) => g.id !== id));
     if (user) {
       deleteFinancialGoal(user.id, id).catch(console.error);
     }
-  }, [user]);
+  }, [user, financialGoals, addTransaction]);
 
   const contributeToGoal = useCallback((id: string, amount: number) => {
     let goalName = "Goal Contribution";
