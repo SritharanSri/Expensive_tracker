@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp, Category } from "@/context/AppContext";
 import { BottomSheet } from "./BottomSheet";
-import { Plus, Check, ChevronRight, Palette, Ghost } from "lucide-react";
+import { Plus, Check, ChevronRight, Palette, Ghost, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CategorySelectorProps {
@@ -29,7 +29,7 @@ const PRESET_COLORS = [
 ];
 
 export function CategorySelector({ type, selectedId, onSelect, isDark }: CategorySelectorProps) {
-  const { categories, addCategory } = useApp();
+  const { categories, addCategory, deleteCategory } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   
@@ -37,6 +37,7 @@ export function CategorySelector({ type, selectedId, onSelect, isDark }: Categor
   const [newName, setNewName] = useState("");
   const [newIcon, setNewIcon] = useState("✨");
   const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const filteredCategories = categories.filter(c => c.type === type);
   const selectedCategory = categories.find(c => c.id === selectedId);
@@ -131,9 +132,55 @@ export function CategorySelector({ type, selectedId, onSelect, isDark }: Categor
                     <span className={cn("text-sm font-bold z-10", isDark ? "text-white" : "text-slate-900")}>
                       {cat.name}
                     </span>
-                    {selectedId === cat.id && (
-                      <Check size={14} className="absolute top-2 right-2 text-indigo-500" />
-                    )}
+                    
+                    <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
+                      {selectedId === cat.id && (
+                        <Check size={14} className="text-indigo-500" />
+                      )}
+                      
+                      {!cat.isSystem && (
+                        <div className="flex items-center">
+                          {confirmDeleteId === cat.id ? (
+                            <div className="flex items-center gap-1 bg-rose-500 rounded-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                               <button 
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   deleteCategory(cat.id);
+                                   if (selectedId === cat.id) onSelect("");
+                                   setConfirmDeleteId(null);
+                                 }}
+                                 className="p-1 px-2 text-[8px] font-black text-white hover:bg-rose-600 transition-colors"
+                               >
+                                 DELETE
+                               </button>
+                               <button 
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setConfirmDeleteId(null);
+                                 }}
+                                 className="p-1 px-2 text-[8px] font-black text-rose-100 hover:bg-rose-600 border-l border-rose-400"
+                               >
+                                 ESC
+                               </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteId(cat.id);
+                              }}
+                              className={cn(
+                                "p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100",
+                                isDark ? "bg-white/10 hover:bg-rose-500/20 text-slate-400 hover:text-rose-500" : "bg-slate-200 hover:bg-rose-50 text-slate-500 hover:text-rose-500"
+                              )}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <motion.div 
                       className="absolute inset-0 opacity-0 group-active:opacity-10 pointer-events-none"
                       style={{ backgroundColor: cat.color }}
