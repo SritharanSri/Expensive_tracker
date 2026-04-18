@@ -124,13 +124,10 @@ export function Dashboard() {
               </p>
             </div>
             <button 
-              onClick={() => {
-                if (isPremium) setScreen("assistant");
-                else triggerPremiumModal("The AI Assistant provides deep financial analysis and personalized coaching. Unlock it with Premium.");
-              }}
-              className={cn("p-2 rounded-xl", isDark ? "bg-white/5" : "bg-slate-100")}
+              onClick={() => setScreen("assistant")}
+              className={cn("p-2 rounded-xl transition-colors", isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200")}
             >
-              {isPremium ? <ArrowRight size={16} className={isDark ? "text-slate-400" : "text-slate-600"} /> : <Crown size={16} className="text-amber-500" />}
+              <ArrowRight size={16} className={isDark ? "text-slate-400" : "text-slate-600"} />
             </button>
           </div>
         </GlassCard>
@@ -179,6 +176,7 @@ export function Dashboard() {
                   total: 3,
                   color: "#6366F1",
                   gradient: "from-indigo-500 to-violet-500",
+                  action: () => { setAddExpenseInitialMode("voice"); setScreen("add-expense"); }
                 },
                 {
                   icon: <MessageSquare size={14} className="text-emerald-400" />,
@@ -187,6 +185,7 @@ export function Dashboard() {
                   total: 3,
                   color: "#10B981",
                   gradient: "from-emerald-500 to-teal-500",
+                  action: () => setScreen("assistant")
                 },
                 {
                   icon: <Target size={14} className="text-amber-400" />,
@@ -195,12 +194,13 @@ export function Dashboard() {
                   total: 2,
                   color: "#F59E0B",
                   gradient: "from-amber-500 to-orange-500",
+                  action: () => setScreen("goals")
                 },
               ].map((meter) => {
                 const pct = Math.min(100, (meter.used / meter.total) * 100);
                 const isMaxed = meter.used >= meter.total;
                 return (
-                  <div key={meter.label}>
+                  <div key={meter.label} onClick={meter.action} className="cursor-pointer group">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center", isDark ? "bg-white/5" : "bg-slate-50")}>
