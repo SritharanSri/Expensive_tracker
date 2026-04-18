@@ -18,6 +18,7 @@ const txCol = (uid: string) => collection(db, "users", uid, "transactions");
 const budgetCol = (uid: string) => collection(db, "users", uid, "budgets");
 const goalsCol = (uid: string) => collection(db, "users", uid, "savingsGoals");
 const goalsSystemCol = (uid: string) => collection(db, "users", uid, "financialGoals");
+const categoryCol = (uid: string) => collection(db, "users", uid, "categories");
 const userDoc = (uid: string) => doc(db, "users", uid);
 
 // ─── Financial Goals (Smart Goals System) ────────────────────────────────────
@@ -43,6 +44,25 @@ export async function deleteFinancialGoal(uid: string, goalId: string): Promise<
   await deleteDoc(doc(goalsSystemCol(uid), goalId));
 }
 
+// ─── Categories ─────────────────────────────────────────────────────────────
+export async function fetchCategories(uid: string): Promise<Category[]> {
+  try {
+    const snap = await getDocs(categoryCol(uid));
+    return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Category));
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCategory(uid: string, cat: Omit<Category, "id">): Promise<string> {
+  const ref = await addDoc(categoryCol(uid), cat);
+  return ref.id;
+}
+
+export async function removeCategory(uid: string, catId: string): Promise<void> {
+  await deleteDoc(doc(categoryCol(uid), catId));
+}
+
 
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
@@ -58,6 +78,7 @@ export async function fetchTransactions(uid: string): Promise<Transaction[]> {
         amount: data.amount,
         category: data.category,
         type: data.type,
+        linkedIncomeCategoryId: data.linkedIncomeCategoryId ?? undefined,
         date: data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date),
         note: data.note ?? undefined,
       } as Transaction;
@@ -76,6 +97,7 @@ export async function saveTransaction(
     amount: tx.amount,
     category: tx.category,
     type: tx.type,
+    linkedIncomeCategoryId: tx.linkedIncomeCategoryId ?? null,
     date: Timestamp.fromDate(tx.date instanceof Date ? tx.date : new Date(tx.date)),
     note: tx.note ?? null,
   });

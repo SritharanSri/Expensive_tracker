@@ -13,14 +13,13 @@ import { AlertTriangle, Plus, TrendingDown, CheckCircle2, Flame, Check, Sparkles
 import { CATEGORIES, Category } from "@/lib/data";
 
 export function BudgetScreen() {
-  const { isDark, budgets, addBudget, deleteBudget, isPremium, currencyConfig, t, triggerPremiumModal } = useApp();
+  const { isDark, budgets, addBudget, deleteBudget, isPremium, currencyConfig, t, triggerPremiumModal, categories } = useApp();
   const [selected, setSelected] = useState<string | null>(null);
   const [showAddBudget, setShowAddBudget] = useState(false);
   const [budgetSaved, setBudgetSaved] = useState(false);
   const [newBudgetAmount, setNewBudgetAmount] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const expenseCategories = CATEGORIES.filter(c => !["salary", "freelance", "investment"].includes(c.id));
-  const [selectedCat, setSelectedCat] = useState<Category>(expenseCategories[0]);
+  const [selectedCat, setSelectedCat] = useState<Category | null>(null);
+  const expenseCategories = categories.filter(c => c.type === "expense");
 
   const totalAllocated = budgets.reduce((a, b) => a + b.limit, 0);
   const totalSpent = budgets.reduce((a, b) => a + b.spent, 0);
@@ -158,7 +157,7 @@ export function BudgetScreen() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <h4 className={cn("font-black text-sm", isDark ? "text-white" : "text-slate-800")}>{CATEGORIES.find(c => c.id === budget.category)?.name ?? budget.category}</h4>
+                      <h4 className={cn("font-black text-sm", isDark ? "text-white" : "text-slate-800")}>{categories.find(c => c.id === budget.category)?.name ?? budget.category}</h4>
                       <div className="text-right">
                         <span className={cn("text-sm font-black", isExceeded ? "text-rose-500" : isDark ? "text-white" : "text-slate-800")}>
                           {formatCurrency(budget.spent, currencyConfig)}
@@ -268,7 +267,7 @@ export function BudgetScreen() {
                    onClick={() => setSelectedCat(cat)}
                    className={cn(
                      "flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-left transition-all",
-                     selectedCat.id === cat.id
+                     selectedCat?.id === cat.id
                        ? "bg-indigo-600 border-indigo-600 shadow-md shadow-indigo-500/30"
                        : isDark
                          ? "bg-white/5 border-white/10 hover:bg-white/10"
@@ -278,7 +277,7 @@ export function BudgetScreen() {
                    <span className="text-xl">{cat.icon}</span>
                    <span className={cn(
                      "text-xs font-semibold",
-                     selectedCat.id === cat.id ? "text-white" : isDark ? "text-slate-300" : "text-slate-700"
+                     selectedCat?.id === cat.id ? "text-white" : isDark ? "text-slate-300" : "text-slate-700"
                    )}>{cat.name}</span>
                  </button>
                ))}
@@ -300,19 +299,21 @@ export function BudgetScreen() {
               />
             </div>
           </div>
-          <button 
             onClick={() => {
-              if (!newBudgetAmount) return;
+              if (!newBudgetAmount || !selectedCat) return;
               addBudget({ category: selectedCat.id, limit: parseFloat(newBudgetAmount), icon: selectedCat.icon });
               setBudgetSaved(true);
               setTimeout(() => {
                 setBudgetSaved(false);
                 setShowAddBudget(false);
                 setNewBudgetAmount("");
-                setSelectedCat(expenseCategories[0]);
+                setSelectedCat(null);
               }, 1200);
             }}
-            className="w-full py-5 rounded-3xl bg-indigo-600 text-white font-black text-lg shadow-xl shadow-indigo-500/30"
+            className={cn(
+              "w-full py-5 rounded-3xl text-white font-black text-lg transition-all",
+              (!newBudgetAmount || !selectedCat) ? "bg-slate-400 opacity-50" : "bg-indigo-600 shadow-xl shadow-indigo-500/30"
+            )}
           >
             {budgetSaved ? t("saved") : "Set Budget Limit"}
           </button>

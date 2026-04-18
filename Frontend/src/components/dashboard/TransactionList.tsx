@@ -11,7 +11,9 @@ import { ArrowUpRight, ArrowDownLeft, Search, SlidersHorizontal, ReceiptText } f
 import { useApp } from "@/context/AppContext";
 
 function TxRow({ tx, i, isDark, animate = true, isMounted }: { tx: Transaction; i: number; isDark: boolean; animate?: boolean; isMounted: boolean }) {
-  const cat = CATEGORIES.find((c) => c.id === tx.category);
+  const { categories, currencyConfig } = useApp();
+  const cat = categories.find((c) => c.id === tx.category);
+  const source = tx.linkedIncomeCategoryId ? categories.find(c => c.id === tx.linkedIncomeCategoryId) : null;
   const isIncome = tx.type === "income";
 
   return (
@@ -35,14 +37,20 @@ function TxRow({ tx, i, isDark, animate = true, isMounted }: { tx: Transaction; 
         <p className={cn("font-semibold text-sm truncate", isDark ? "text-white" : "text-slate-800")}>
           {tx.title}
         </p>
-        <p className={cn("text-xs mt-0.5", isDark ? "text-slate-500" : "text-slate-400")}>
+        <p className={cn("text-xs mt-0.5 flex items-center gap-1", isDark ? "text-slate-500" : "text-slate-400")}>
           {isMounted ? formatDate(tx.date) : "..."} · {cat?.name}
+          {source && (
+            <span className="flex items-center gap-1">
+              · <span className="opacity-40 italic">from</span> 
+              <span className={cn("font-bold", isDark ? "text-indigo-400" : "text-indigo-600")}>{source.name}</span>
+            </span>
+          )}
         </p>
       </div>
       <div className="flex flex-col items-end shrink-0">
         <div className={cn("flex items-center gap-0.5 font-bold text-sm", isIncome ? "text-emerald-500" : "text-rose-500")}>
           {isIncome ? <ArrowUpRight size={14} strokeWidth={2.5} /> : <ArrowDownLeft size={14} strokeWidth={2.5} />}
-          {formatCurrency(tx.amount, useApp().currencyConfig)}
+          {formatCurrency(tx.amount, currencyConfig)}
         </div>
       </div>
     </motion.div>
@@ -50,9 +58,10 @@ function TxRow({ tx, i, isDark, animate = true, isMounted }: { tx: Transaction; 
 }
 
 export function TransactionList({ isDark }: { isDark: boolean }) {
-  const { transactions, currencyConfig, t } = useApp();
+  const { transactions, currencyConfig, t, categories } = useApp();
   const [showAll, setShowAll] = useState(false);
-  const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
+  const [filter, setFilter] = useState<"all" | "income" | "expense" | "investment">("all");
+  const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isMounted, setIsMounted] = useState(false);
 
@@ -62,6 +71,7 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
 
   const filtered = (transactions || [])
     .filter((tx) => filter === "all" || tx.type === filter)
+    .filter((tx) => !selectedCatId || tx.category === selectedCatId)
     .filter((tx) => tx.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -123,10 +133,10 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
           </div>
 
           <div className={cn("flex rounded-xl p-0.5 gap-0.5", isDark ? "bg-slate-800" : "bg-slate-100")}>
-            {(["all", "income", "expense"] as const).map((f) => (
+            {(["all", "income", "expense", "investment"] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => setFilter(f)}
+                onClick={() => { setFilter(f); setSelectedCatId(null); }}
                 className={cn(
                   "flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all duration-200",
                   filter === f
@@ -134,7 +144,37 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
                     : isDark ? "text-slate-400" : "text-slate-500"
                 )}
               >
-                {f}
+                {f === "all" ? t("nav_reports") : f}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <button
+              onClick={() => setSelectedCatId(null)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shrink-0",
+                !selectedCatId 
+                  ? "bg-indigo-500 text-white" 
+                  : isDark ? "bg-white/5 text-slate-500" : "bg-slate-100 text-slate-400"
+              )}
+            >
+              All Categories
+            </button>
+            {categories.filter(c => filter === "all" || c.type === (filter === "investment" ? "expense" : filter)).map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCatId(cat.id === selectedCatId ? null : cat.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shrink-0 flex items-center gap-1.5",
+                  selectedCatId === cat.id
+                    ? "text-white"
+                    : isDark ? "bg-white/5 text-slate-500" : "bg-slate-100 text-slate-400"
+                )}
+                style={selectedCatId === cat.id ? { backgroundColor: cat.color } : undefined}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.name}</span>
               </button>
             ))}
           </div>

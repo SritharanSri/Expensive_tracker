@@ -8,6 +8,7 @@ import {
   fetchSavingsGoals, saveSavingsGoal,
   fetchFinancialGoals, saveFinancialGoal, updateFinancialGoal, deleteFinancialGoal,
   saveUserProfile, updateBudgetSpent,
+  fetchCategories, saveCategory, removeCategory, removeTransaction,
 } from "@/lib/firestore";
 
 export type Screen =
@@ -25,14 +26,26 @@ export interface UserProfile {
   joinedDate: string;
 }
 
+export type TransactionType = "income" | "expense" | "investment";
+
 export interface Transaction {
   id: string;
   title: string;
   amount: number;
-  category: string;
+  category: string; // Category ID
   date: Date;
-  type: "income" | "expense";
+  type: TransactionType;
+  linkedIncomeCategoryId?: string; // ID of the income category that funded this
   note?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  type: "income" | "expense";
+  color: string;
+  icon: string;
+  isSystem?: boolean;
 }
 
 export interface Budget {
@@ -105,6 +118,11 @@ export interface AppContextType {
   balance: number;
   transactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, "id">) => void;
+  removeTransaction: (id: string) => void;
+  categories: Category[];
+  addCategory: (cat: Omit<Category, "id">) => void;
+  deleteCategory: (id: string) => void;
+  
   budgets: Budget[];
   addBudget: (budget: Omit<Budget, "id" | "spent">) => void;
   deleteBudget: (budgetId: string) => void;
@@ -230,6 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [savingsGoals, setSavingsGoals] = useState<SavingGoal[]>([]);
   const [financialGoals, setFinancialGoals] = useState<FinancialGoal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   // Premium Access State
@@ -318,13 +337,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     async function loadUserData() {
       const uid = user!.id;
-      const [txs, buds, goals, fGoals] = await Promise.all([
+      const [txs, buds, goals, fGoals, userCats] = await Promise.all([
         fetchTransactions(uid),
         fetchBudgets(uid),
         fetchSavingsGoals(uid),
         fetchFinancialGoals(uid),
+        fetchCategories(uid),
       ]);
       if (cancelled) return;
+
+      // Merge system categories with user custom categories
+      const allCats = [...CATEGORIES.map(c => ({ ...c, type: (c.id === "salary" || c.id === "freelance" || c.id === "investment") ? "income" : "expense", isSystem: true } as Category)), ...userCats];
+      setCategories(allCats);
 
       setTransactions(txs);
 
@@ -378,8 +402,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [country]);
 
   const balance = useMemo(() => {
-    return transactions.reduce((acc, tx) => tx.type === "income" ? acc + tx.amount : acc - tx.amount, 0);
+    return transactions.reduce((acc, tx) => (tx.type === "income") ? acc + tx.amount : acc - tx.amount, 0);
   }, [transactions]);
+
+  const addCategory = useCallback((cat: Omit<Category, "id">) => {
+    const tempId = Math.random().toString(36).substr(2, 9);
+    const newCat = { ...cat, id: tempId, isSystem: false };
+    setCategories(prev => [...prev, newCat]);
+
+    if (user) {
+      saveCategory(user.id, cat)
+        .then(id => setCategories(prev => prev.map(c => c.id === tempId ? { ...c, id } : c)))
+        .catch(console.error);
+    }
+  }, [user]);
+
+  const deleteCategory = useCallback((id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
+    if (user) removeCategory(user.id, id).catch(console.error);
+  }, [user]);
 
   const addNotification = useCallback((notif: Omit<AppNotification, "id" | "time" | "unread">) => {
     const newNotif: AppNotification = {
@@ -455,6 +496,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .catch(console.error);
     }
   }, [user, budgets, addNotification]);
+
+  const removeTx = useCallback((id: string) => {
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    if (user) removeTransaction(user.id, id).catch(console.error);
+  }, [user]);
 
   const addBudget = useCallback((budget: Omit<Budget, "id" | "spent">) => {
     const tempId = Math.random().toString(36).substr(2, 9);
@@ -762,9 +808,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setLanguage,
         currencyConfig,
         t,
-        balance,
         transactions,
         addTransaction,
+        removeTransaction: removeTx,
+        categories,
+        addCategory,
+        deleteCategory,
         budgets,
         addBudget,
         deleteBudget: deleteBudgetItem,

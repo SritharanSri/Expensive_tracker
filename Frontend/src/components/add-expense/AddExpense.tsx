@@ -22,9 +22,13 @@ import {
   Mic,
   Crown,
   Lock,
+  HandCoins,
+  Coins,
+  TrendingUp,
 } from "lucide-react";
+import { CategorySelector } from "@/components/ui/CategorySelector";
 
-type TxType = "expense" | "income";
+type TxType = "expense" | "income" | "investment";
 type EntryMode = "manual" | "scan" | "voice";
 
 const NUMPAD = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
@@ -35,7 +39,8 @@ export function AddExpense() {
 
   const [txType, setTxType] = useState<TxType>("expense");
   const [amount, setAmount] = useState("0");
-  const [selectedCat, setSelectedCat] = useState(CATEGORIES[0]);
+  const [selectedCatId, setSelectedCatId] = useState<string>("");
+  const [linkedSourceId, setLinkedSourceId] = useState<string>("");
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [showCatPicker, setShowCatPicker] = useState(false);
@@ -154,10 +159,11 @@ export function AddExpense() {
     
     // Construct transaction object
     const newTx = {
-      title: note || (txType === "expense" ? "Misc Expense" : "Misc Income"),
+      title: note || (txType === "expense" ? "Misc Expense" : txType === "investment" ? "Investment" : "Misc Income"),
       amount: parseFloat(amount),
-      category: selectedCat.id,
-      type: txType as "expense" | "income",
+      category: selectedCatId || (txType === "income" ? "salary" : "other"),
+      type: txType,
+      linkedIncomeCategoryId: (txType === "expense" || txType === "investment") ? linkedSourceId : undefined,
       date: new Date()
     };
 
@@ -344,22 +350,20 @@ export function AddExpense() {
             transition={{ duration: 0.28 }}
           >
 
-      {/* Type Toggle (expense / income) */}
+      {/* Type Toggle (expense / income / investment) */}
       <div className="mx-5 mt-4">
         <div className={cn(
           "flex rounded-2xl p-1 gap-1",
           isDark ? "bg-slate-800" : "bg-slate-100"
         )}>
-          {(["expense", "income"] as TxType[]).map((typeOption) => (
+          {(["expense", "income", "investment"] as TxType[]).map((typeOption) => (
             <motion.button
               key={typeOption}
-              onClick={() => setTxType(typeOption)}
+              onClick={() => { setTxType(typeOption); setSelectedCatId(""); }}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5",
+                "flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all duration-200 flex flex-col items-center justify-center gap-1",
                 txType === typeOption
-                  ? typeOption === "expense"
-                    ? "text-white shadow-glow-rose"
-                    : "text-white shadow-glow-emerald"
+                  ? "text-white shadow-lg"
                   : isDark
                   ? "text-slate-500"
                   : "text-slate-400"
@@ -370,7 +374,14 @@ export function AddExpense() {
                       background:
                         typeOption === "expense"
                           ? "linear-gradient(135deg, #EF4444, #FB7185)"
-                          : "linear-gradient(135deg, #10B981, #34D399)",
+                          : typeOption === "income"
+                          ? "linear-gradient(135deg, #10B981, #34D399)"
+                          : "linear-gradient(135deg, #6366F1, #8B5CF6)",
+                      boxShadow: typeOption === "expense" 
+                        ? "0 4px 12px rgba(239,68,68,0.3)" 
+                        : typeOption === "income" 
+                        ? "0 4px 12px rgba(16,185,129,0.3)" 
+                        : "0 4px 12px rgba(99,102,241,0.3)"
                     }
                   : undefined
               }
@@ -378,10 +389,12 @@ export function AddExpense() {
             >
               {typeOption === "expense" ? (
                 <ArrowDownLeft size={14} strokeWidth={2.5} />
-              ) : (
+              ) : typeOption === "income" ? (
                 <ArrowUpRight size={14} strokeWidth={2.5} />
+              ) : (
+                <TrendingUp size={14} strokeWidth={2.5} />
               )}
-              {t(typeOption as TranslationKey)}
+              {typeOption}
             </motion.button>
           ))}
         </div>
@@ -418,86 +431,33 @@ export function AddExpense() {
       {/* Details Card */}
       <GlassCard isDark={isDark} className="mx-5 mb-4" animate={false}>
         <div className="p-4 space-y-0">
-          {/* Category */}
-          <button
-            onClick={() => setShowCatPicker(!showCatPicker)}
-            className={cn(
-              "w-full flex items-center gap-3 p-3 rounded-2xl transition-colors",
-              isDark ? "hover:bg-white/[0.04]" : "hover:bg-slate-50"
-            )}
-          >
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-              style={{ background: `${selectedCat.color}18` }}
-            >
-              {selectedCat.icon}
-            </div>
-            <div className="flex-1 text-left">
-              <p className={cn("text-xs", isDark ? "text-slate-500" : "text-slate-400")}>{t("category")}</p>
-              <p className={cn("text-sm font-semibold", isDark ? "text-white" : "text-slate-800")}>
-                {selectedCat.name}
-              </p>
-            </div>
-            <ChevronDown
-              size={16}
-              className={cn(
-                "transition-transform duration-200",
-                isDark ? "text-slate-500" : "text-slate-400",
-                showCatPicker && "rotate-180"
-              )}
+          {/* Category Selector */}
+          <div className="p-2 pt-4">
+            <label className={cn("text-[10px] font-black uppercase tracking-widest ml-2 mb-2 block", isDark ? "text-slate-500" : "text-slate-400")}>
+              Select Category
+            </label>
+            <CategorySelector
+              type={txType === "income" ? "income" : "expense"}
+              selectedId={selectedCatId}
+              onSelect={setSelectedCatId}
+              isDark={isDark}
             />
-          </button>
+          </div>
 
-          {/* Category Picker */}
-          <AnimatePresence>
-            {showCatPicker && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
-              >
-                <div className="px-3 pb-3 grid grid-cols-4 gap-2">
-                  {CATEGORIES.filter((c) =>
-                    txType === "income"
-                      ? ["salary", "freelance", "investment", "other"].includes(c.id)
-                      : !["salary", "freelance", "investment"].includes(c.id)
-                  ).map((cat) => (
-                    <motion.button
-                      key={cat.id}
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => {
-                        setSelectedCat(cat);
-                        setShowCatPicker(false);
-                      }}
-                      className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all",
-                        selectedCat.id === cat.id
-                          ? "ring-2 ring-offset-1"
-                          : isDark
-                          ? "bg-slate-800/60"
-                          : "bg-slate-50"
-                      )}
-                      style={
-                        selectedCat.id === cat.id
-                          ? { background: `${cat.color}15`, outline: `2px solid ${cat.color}` }
-                          : undefined
-                      }
-                    >
-                      <span className="text-xl">{cat.icon}</span>
-                      <span className={cn(
-                        "text-[10px] font-medium text-center leading-tight",
-                        isDark ? "text-slate-400" : "text-slate-600"
-                      )}>
-                        {cat.name.split(" ")[0]}
-                      </span>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {(txType === "expense" || txType === "investment") && (
+            <div className="p-2 pb-4">
+              <label className={cn("text-[10px] font-black uppercase tracking-widest ml-2 mb-2 block", isDark ? "text-indigo-400/80" : "text-indigo-600/80")}>
+                Which income source funds this?
+                <span className="ml-1 opacity-50 font-medium normal-case">(Optional)</span>
+              </label>
+              <CategorySelector
+                type="income"
+                selectedId={linkedSourceId}
+                onSelect={setLinkedSourceId}
+                isDark={isDark}
+              />
+            </div>
+          )}
 
           {/* Divider */}
           <div className={cn("mx-3 h-px", isDark ? "bg-white/[0.06]" : "bg-slate-100")} />

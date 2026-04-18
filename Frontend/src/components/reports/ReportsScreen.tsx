@@ -22,7 +22,7 @@ import {
 import { TrendingUp, TrendingDown, DollarSign, Crown, Info, Sparkles } from "lucide-react";
 
 export function ReportsScreen() {
-  const { isDark, isPremium, currencyConfig, t, transactions } = useApp();
+  const { isDark, isPremium, currencyConfig, t, transactions, categories } = useApp();
   const [period, setPeriod] = useState<"6M" | "3M" | "1M">("3M");
   const [activePie, setActivePie] = useState<number | null>(null);
 
@@ -54,16 +54,41 @@ export function ReportsScreen() {
   // Derive Pie Data from real transactions
   const pieData = useMemo(() => {
     const counts: Record<string, number> = {};
-    transactions.filter(t => t.type === "expense").forEach((tx) => {
+    const expenseTxs = transactions.filter(t => t.type === "expense" || t.type === "investment");
+    expenseTxs.forEach((tx) => {
       counts[tx.category] = (counts[tx.category] || 0) + tx.amount;
     });
 
-    return CATEGORIES.map(cat => ({
-      name: cat.name,
-      value: counts[cat.id] || 0,
-      color: cat.color
-    })).filter(d => d.value > 0);
-  }, [transactions]);
+    return Object.entries(counts).map(([catId, value]) => {
+      const cat = categories.find(c => c.id === catId);
+      return {
+        name: cat?.name || "Other",
+        value,
+        color: cat?.color || "#94A3B8"
+      };
+    }).sort((a, b) => b.value - a.value);
+  }, [transactions, categories]);
+
+  // Income Source Data
+  const sourceData = useMemo(() => {
+    const sources: Record<string, { id: string; name: string; color: string; total: number; spent: number }> = {};
+    
+    // Get all income categories (potential sources)
+    categories.filter(c => c.type === "income").forEach(c => {
+      sources[c.id] = { id: c.id, name: c.name, color: c.color, total: 0, spent: 0 };
+    });
+
+    transactions.forEach(tx => {
+      if (tx.type === "income" && sources[tx.category]) {
+        sources[tx.category].total += tx.amount;
+      }
+      if ((tx.type === "expense" || tx.type === "investment") && tx.linkedIncomeCategoryId && sources[tx.linkedIncomeCategoryId]) {
+        sources[tx.linkedIncomeCategoryId].spent += tx.amount;
+      }
+    });
+
+    return Object.values(sources).filter(s => s.total > 0 || s.spent > 0);
+  }, [transactions, categories]);
 
   const totalIncome = transactions.filter(t => t.type === "income").reduce((a, b) => a + b.amount, 0);
   const totalExpense = transactions.filter(t => t.type === "expense").reduce((a, b) => a + b.amount, 0);
@@ -205,64 +230,56 @@ export function ReportsScreen() {
         </div>
       </div>
 
-      {/* Spending Breakdown */}
-      <div className="mx-5 mb-10">
-        <h3 className={cn("font-black text-sm uppercase tracking-widest mb-4 px-1", isDark ? "text-slate-400" : "text-slate-500")}>Spending Mix</h3>
-        <GlassCard isDark={isDark} className="p-6">
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            <div className="relative shrink-0">
-              <PieChart width={160} height={160}>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={8}
-                  dataKey="value"
-                  onMouseEnter={(_, i) => setActivePie(i)}
-                  onMouseLeave={() => setActivePie(null)}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell 
-                      key={entry.name} 
-                      fill={entry.color} 
-                      stroke="transparent"
-                      className="transition-all duration-300"
-                      style={{ 
-                        filter: activePie === index ? `drop-shadow(0 0 12px ${entry.color})` : 'none',
-                        transform: activePie === index ? 'scale(1.05)' : 'scale(1)',
-                        transformOrigin: '50% 50%'
-                      }}
-                    />
-                  ))}
-                </Pie>
-              </PieChart>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-[10px] font-black uppercase text-slate-500">Total</p>
-                <p className={cn("text-lg font-black", isDark ? "text-white" : "text-slate-900")}>
-                  {formatCurrency(pieTotal, currencyConfig)}
-                </p>
-              </div>
-            </div>
 
-            <div className="flex-1 w-full space-y-4">
-               {pieData.length > 0 ? pieData.map((d, i) => (
-                 <div key={d.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                       <span className={cn("text-xs font-bold", isDark ? "text-slate-400" : "text-slate-600")}>{d.name}</span>
+      {/* Income Source Tracking (Multiple Sources) */}
+      <div className="mx-5 mb-10">
+        <h3 className={cn("font-black text-sm uppercase tracking-widest mb-4 px-1", isDark ? "text-slate-400" : "text-slate-500")}>Source Efficiency</h3>
+        <div className="space-y-4">
+          {sourceData.length > 0 ? sourceData.map((source) => {
+            const percent = Math.min(Math.round((source.spent / source.total) * 100), 100);
+            return (
+              <GlassCard key={source.id} isDark={isDark} className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm" style={{ background: `${source.color}20`, color: source.color }}>
+                      {categories.find(c => c.id === source.id)?.icon || "💰"}
                     </div>
-                    <span className={cn("text-xs font-black", isDark ? "text-white" : "text-slate-800")}>
-                      {Math.round(d.value / pieTotal * 100)}%
-                    </span>
-                 </div>
-               )) : (
-                <p className="text-xs text-slate-500 text-center py-4">No data available</p>
-               )}
-            </div>
-          </div>
-        </GlassCard>
+                    <div>
+                      <p className={cn("text-xs font-black", isDark ? "text-white" : "text-slate-900")}>{source.name}</p>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Received: {formatCurrency(source.total, currencyConfig)}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={cn("text-xs font-black", percent > 80 ? "text-rose-500" : "text-indigo-500")}>{percent}% Spent</p>
+                  </div>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className={cn("w-full h-2 rounded-full overflow-hidden", isDark ? "bg-white/5" : "bg-slate-100")}>
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${percent}%` }}
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: source.color }}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5">
+                   <div className="flex items-center gap-1">
+                      <TrendingDown size={12} className="text-rose-500" />
+                      <span className="text-[10px] font-bold text-slate-500">Expensed: {formatCurrency(source.spent, currencyConfig)}</span>
+                   </div>
+                   <div className="flex items-center gap-1">
+                      <Check size={12} className="text-emerald-500" />
+                      <span className="text-[10px] font-bold text-slate-500">Available: {formatCurrency(source.total - source.spent, currencyConfig)}</span>
+                   </div>
+                </div>
+              </GlassCard>
+            );
+          }) : (
+            <div className="text-center py-8 opacity-40">No income sources found yet.</div>
+          )}
+        </div>
       </div>
     </motion.div>
   );
