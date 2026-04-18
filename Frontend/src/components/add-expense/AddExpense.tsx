@@ -159,11 +159,11 @@ export function AddExpense() {
     
     // Construct transaction object
     const newTx = {
-      title: note || (txType === "expense" ? "Misc Expense" : txType === "investment" ? "Investment" : "Misc Income"),
+      title: note || (txType === "expense" ? "Misc Expense" : "Misc Income"),
       amount: parseFloat(amount),
       category: selectedCatId || (txType === "income" ? "salary" : "other"),
       type: txType,
-      linkedIncomeCategoryId: (txType === "expense" || txType === "investment") ? linkedSourceId : undefined,
+      linkedIncomeCategoryId: (txType === "expense") ? linkedSourceId : undefined,
       date: new Date()
     };
 
@@ -350,13 +350,13 @@ export function AddExpense() {
             transition={{ duration: 0.28 }}
           >
 
-      {/* Type Toggle (expense / income / investment) */}
+      {/* Type Toggle (expense / income) */}
       <div className="mx-5 mt-4">
         <div className={cn(
           "flex rounded-2xl p-1 gap-1",
           isDark ? "bg-slate-800" : "bg-slate-100"
         )}>
-          {(["expense", "income", "investment"] as TxType[]).map((typeOption) => (
+          {(["expense", "income"] as TxType[]).map((typeOption) => (
             <motion.button
               key={typeOption}
               onClick={() => { setTxType(typeOption); setSelectedCatId(""); }}
@@ -374,14 +374,10 @@ export function AddExpense() {
                       background:
                         typeOption === "expense"
                           ? "linear-gradient(135deg, #EF4444, #FB7185)"
-                          : typeOption === "income"
-                          ? "linear-gradient(135deg, #10B981, #34D399)"
-                          : "linear-gradient(135deg, #6366F1, #8B5CF6)",
+                          : "linear-gradient(135deg, #10B981, #34D399)",
                       boxShadow: typeOption === "expense" 
-                        ? "0 4px 12px rgba(239,68,68,0.3)" 
-                        : typeOption === "income" 
-                        ? "0 4px 12px rgba(16,185,129,0.3)" 
-                        : "0 4px 12px rgba(99,102,241,0.3)"
+                        ? "0 4px 12px -4px #EF444460"
+                        : "0 4px 12px -4px #10B98160"
                     }
                   : undefined
               }

@@ -54,7 +54,7 @@ export function ReportsScreen() {
   // Derive Pie Data from real transactions
   const pieData = useMemo(() => {
     const counts: Record<string, number> = {};
-    const expenseTxs = transactions.filter(t => t.type === "expense" || t.type === "investment");
+    const expenseTxs = transactions.filter(t => t.type === "expense");
     expenseTxs.forEach((tx) => {
       counts[tx.category] = (counts[tx.category] || 0) + tx.amount;
     });
@@ -82,7 +82,7 @@ export function ReportsScreen() {
       if (tx.type === "income" && sources[tx.category]) {
         sources[tx.category].total += tx.amount;
       }
-      if ((tx.type === "expense" || tx.type === "investment") && tx.linkedIncomeCategoryId && sources[tx.linkedIncomeCategoryId]) {
+      if (tx.type === "expense" && tx.linkedIncomeCategoryId && sources[tx.linkedIncomeCategoryId]) {
         sources[tx.linkedIncomeCategoryId].spent += tx.amount;
       }
     });

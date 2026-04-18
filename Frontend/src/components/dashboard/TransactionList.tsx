@@ -134,7 +134,7 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
           </div>
 
           <div className={cn("flex rounded-xl p-0.5 gap-0.5", isDark ? "bg-slate-800" : "bg-slate-100")}>
-            {(["all", "income", "expense", "investment"] as const).map((f) => (
+            {(["all", "income", "expense"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => { setFilter(f); setSelectedCatId(null); }}
@@ -162,7 +162,7 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
             >
               All Categories
             </button>
-            {categories.filter(c => filter === "all" || c.type === (filter === "investment" ? "expense" : filter)).map(cat => (
+            {categories.filter(c => filter === "all" || c.type === filter).map(cat => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCatId(cat.id === selectedCatId ? null : cat.id)}
