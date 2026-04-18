@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "600318185454",
+    "project_id": "expenses-app-40970",
+    "storage_bucket": "expenses-app-40970.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:600318185454:android:eaa2cd805ca183abdec8ff",
+        "android_client_info": {
+          "package_name": "com.kalai.expensetrackerai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZhWF9uRllxGPY31-jk0YlRgfLCEr8efg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
