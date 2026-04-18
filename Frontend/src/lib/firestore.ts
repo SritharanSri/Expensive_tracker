@@ -11,7 +11,7 @@ import {
   orderBy,
   Timestamp,
 } from "firebase/firestore";
-import type { Transaction, Budget, SavingGoal, UserProfile, FinancialGoal } from "@/context/AppContext";
+import type { Transaction, Budget, SavingGoal, UserProfile, FinancialGoal, Category } from "@/context/AppContext";
 
 // ─── Collection refs ──────────────────────────────────────────────────────────
 const txCol = (uid: string) => collection(db, "users", uid, "transactions");
