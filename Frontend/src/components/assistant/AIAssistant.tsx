@@ -227,7 +227,10 @@ export function AIAssistant() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Ask your assistant..."
-            className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none"
+            className={cn(
+              "flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none",
+              isDark ? "text-white placeholder:text-slate-600" : "text-slate-900 placeholder:text-slate-400"
+            )}
           />
           <button
             onClick={handleSend}
