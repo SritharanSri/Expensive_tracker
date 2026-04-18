@@ -98,7 +98,7 @@ export function AddExpense() {
           setAmount(data.data.amount.toString());
           setNote(data.data.title);
           const cat = CATEGORIES.find(c => c.id === data.data.category);
-          if (cat) setSelectedCat(cat);
+          if (cat) setSelectedCatId(cat.id);
           
           // Count successful usage
           incrementAiToolUsage();
@@ -498,9 +498,9 @@ export function AddExpense() {
                   setNote(val);
                   // Simple AI Categorization Mock
                   if (val.toLowerCase().includes("kfc") || val.toLowerCase().includes("food") || val.toLowerCase().includes("lunch")) {
-                    setSelectedCat(CATEGORIES.find(c => c.id === "food") || CATEGORIES[0]);
+                    setSelectedCatId("food");
                   } else if (val.toLowerCase().includes("uber") || val.toLowerCase().includes("fuel") || val.toLowerCase().includes("petrol")) {
-                    setSelectedCat(CATEGORIES.find(c => c.id === "transport") || CATEGORIES[0]);
+                    setSelectedCatId("transport");
                   }
                 }}
                 placeholder={t("note")}
