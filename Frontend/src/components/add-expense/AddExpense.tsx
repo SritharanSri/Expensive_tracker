@@ -100,13 +100,24 @@ export function AddExpense() {
           
           // Switch tab after a very brief delay to show completion
           setTimeout(() => setEntryMode("manual"), 600);
+        } else {
+          setVoiceText("I couldn't understand that perfectly. Please try speaking like 'Fuel 1500' or 'Lunch 250'.");
+          console.error("AI Error:", data.message);
         }
       } catch (err) {
-        console.error(err);
+        setVoiceText("Communication error. Please check your internet or configuration.");
+        console.error("Voice Fetch Error:", err);
       }
       setIsProcessingVoice(false);
     };
-    recognition.onerror = () => { setIsListening(false); setIsProcessingVoice(false); };
+    recognition.onerror = (event: any) => { 
+      setIsListening(false); 
+      setIsProcessingVoice(false);
+      console.error("Speech Recognition Error:", event.error);
+      if (event.error === 'not-allowed') {
+        alert("Microphone access denied. Please enable it in your browser settings.");
+      }
+    };
     recognition.onend = () => setIsListening(false);
     
     recognition.start();
