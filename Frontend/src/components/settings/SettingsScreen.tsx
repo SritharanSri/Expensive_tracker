@@ -13,7 +13,7 @@ import {
   ChevronRight, Globe, Palette, Download, LogOut,
   User, Star, Check, Globe2, Languages, ShieldCheck, Crown,
   Zap, Bot, Mic, ScanLine, Target, MessageSquare, BarChart3,
-  BrainCircuit, Infinity as InfinityIcon, Lock, ClipboardPaste, AlertTriangle, FileText
+  BrainCircuit, Infinity as InfinityIcon, Lock, ClipboardPaste, AlertTriangle, FileText, Sparkles
 } from "lucide-react";
 
 interface ToggleProps {
