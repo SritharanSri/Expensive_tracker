@@ -693,6 +693,7 @@ export function SmartGoalsScreen() {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
+              {[
                 { label: "Total Goals", value: financialGoals.length, color: "text-white" },
                 { label: "On Track",    value: onTrackCount, color: "text-emerald-400" },
                 { label: "Monthly Free", value: formatCurrency(Math.max(0, snapshot.monthlySavings - totalRequired), { ...currencyConfig, locale: currencyConfig.locale }).split('.')[0], color: snapshot.monthlySavings > totalRequired ? "text-emerald-400" : "text-rose-400" },
