@@ -60,20 +60,28 @@ export function getConvertedPremiumPrice(targetCurrencyCode: string): number {
   return BASE_PREMIUM_PRICE_LKR * rate;
 }
 
-/**
- * Formats a numeric amount based on user localization settings.
- */
 export function formatCurrency(
   amount: number,
-  config: CurrencyConfig = COUNTRIES.LK.currency
+  config: CurrencyConfig = COUNTRIES.LK.currency,
+  compact: boolean = false
 ): string {
   try {
-    return new Intl.NumberFormat(config.locale, {
+    const options: Intl.NumberFormatOptions = {
       style: "currency",
       currency: config.code,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+    };
+
+    if (compact && Math.abs(amount) >= 1000) {
+      options.notation = "compact";
+      options.compactDisplay = "short";
+      options.minimumFractionDigits = 0;
+      options.maximumFractionDigits = 1;
+    } else {
+      options.minimumFractionDigits = 2;
+      options.maximumFractionDigits = 2;
+    }
+
+    return new Intl.NumberFormat(config.locale, options).format(amount);
   } catch (error) {
     // Fallback if formatting fails
     return `${config.symbol}${amount.toLocaleString()}`;

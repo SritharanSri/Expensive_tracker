@@ -285,7 +285,7 @@ export function Dashboard() {
           <div>
             <p className={cn("text-[10px] font-bold uppercase text-slate-500")}>{t("budget_left")}</p>
             <p className={cn("text-sm font-bold", isDark ? "text-white" : "text-slate-800")}>
-              {formatCurrency(budgetLeft, currencyConfig)}
+              {formatCurrency(budgetLeft, currencyConfig, true)}
             </p>
           </div>
         </GlassCard>
