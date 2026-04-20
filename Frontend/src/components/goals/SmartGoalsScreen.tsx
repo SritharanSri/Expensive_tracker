@@ -599,7 +599,8 @@ export function SmartGoalsScreen() {
     isDark, isPremium, currencyConfig, transactions, budgets,
     financialGoals, addFinancialGoal, updateFinancialGoalItem,
     deleteFinancialGoalItem, contributeToGoal, addNotification,
-    triggerPremiumModal, trackPremiumClick
+    triggerPremiumModal, trackPremiumClick,
+    editingFinancialGoal, setEditingFinancialGoal
   } = useApp();
 
   const [showNewGoal, setShowNewGoal]         = useState(false);
