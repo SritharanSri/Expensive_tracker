@@ -43,32 +43,51 @@ export function ReportsScreen() {
     return 6;
   }, [period]);
 
-  // Derive Monthly Data with dynamic window and chronological sorting
-  const monthlyData = useMemo(() => {
-    const data: Record<string, { month: string; income: number; expense: number; timestamp: number }> = {};
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
-    // Generate empty slots for the last N months
+  // Derive Chart Data with dynamic aggregation (Weekly for 1M, Monthly for 3M/6M)
+  const chartData = useMemo(() => {
+    const data: Record<string, { label: string; income: number; expense: number; timestamp: number }> = {};
     const now = new Date();
-    for (let i = monthCount - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const m = months[d.getMonth()];
-      const year = d.getFullYear();
-      const key = `${year}-${d.getMonth()}`;
-      data[key] = { month: `${m} ${year}`, income: 0, expense: 0, timestamp: d.getTime() };
+
+    if (period === "1M") {
+      // Weekly breakdown for the current month
+      for (let i = 0; i < 4; i++) {
+        const label = `Week ${i + 1}`;
+        data[label] = { label, income: 0, expense: 0, timestamp: i };
+      }
+
+      transactions.forEach((tx) => {
+        const d = new Date(tx.date);
+        // Check if transaction is in the current month
+        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+          const weekIndex = Math.min(Math.floor((d.getDate() - 1) / 7), 3);
+          const label = `Week ${weekIndex + 1}`;
+          if (tx.type === "income") data[label].income += tx.amount;
+          else if (tx.type === "expense") data[label].expense += tx.amount;
+        }
+      });
+    } else {
+      // Monthly breakdown for 3M/6M
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      for (let i = monthCount - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const m = months[d.getMonth()];
+        const year = d.getFullYear();
+        const key = `${year}-${d.getMonth()}`;
+        data[key] = { label: `${m} ${year}`, income: 0, expense: 0, timestamp: d.getTime() };
+      }
+
+      transactions.forEach((tx) => {
+        const d = new Date(tx.date);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        if (data[key]) {
+          if (tx.type === "income") data[key].income += tx.amount;
+          else if (tx.type === "expense") data[key].expense += tx.amount;
+        }
+      });
     }
 
-    transactions.forEach((tx) => {
-      const d = new Date(tx.date);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      if (data[key]) {
-        if (tx.type === "income") data[key].income += tx.amount;
-        else if (tx.type === "expense") data[key].expense += tx.amount;
-      }
-    });
-
     return Object.values(data).sort((a, b) => a.timestamp - b.timestamp);
-  }, [transactions, monthCount]);
+  }, [transactions, monthCount, period]);
 
   // Period-specific totals
   const periodTransactions = useMemo(() => {
@@ -191,9 +210,9 @@ export function ReportsScreen() {
           </div>
 
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={monthlyData} barGap={6}>
+            <BarChart data={chartData} barGap={6}>
               <XAxis 
-                dataKey="month" 
+                dataKey="label" 
                 axisLine={false} 
                 tickLine={false} 
                 tick={{ fontSize: 9, fontWeight: 800, fill: isDark ? "#475569" : "#94A3B8" }} 
@@ -204,7 +223,7 @@ export function ReportsScreen() {
                   if (active && payload && payload.length) {
                     return (
                       <div className={cn("p-4 rounded-[24px] border backdrop-blur-xl shadow-2xl", isDark ? "bg-slate-900/90 border-white/10" : "bg-white/90 border-slate-200")}>
-                        <p className="text-[10px] font-black mb-3 uppercase tracking-widest text-slate-500">{payload[0].payload.month}</p>
+                        <p className="text-[10px] font-black mb-3 uppercase tracking-widest text-slate-500">{payload[0].payload.label}</p>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-6">
                             <span className="text-[10px] font-bold text-emerald-500">INCOME</span>
