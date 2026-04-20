@@ -108,6 +108,19 @@ export async function removeTransaction(uid: string, txId: string): Promise<void
   await deleteDoc(doc(txCol(uid), txId));
 }
 
+export async function updateTransaction(
+  uid: string,
+  txId: string,
+  updates: Partial<Omit<Transaction, "id">>
+): Promise<void> {
+  const data: any = { ...updates };
+  if (updates.date) {
+    data.date = Timestamp.fromDate(updates.date instanceof Date ? updates.date : new Date(updates.date));
+  }
+  await updateDoc(doc(txCol(uid), txId), data);
+}
+
+
 // ─── Budgets ──────────────────────────────────────────────────────────────────
 export async function fetchBudgets(uid: string): Promise<Budget[]> {
   try {

@@ -34,16 +34,26 @@ type EntryMode = "manual" | "scan" | "voice";
 const NUMPAD = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
 
 export function AddExpense() {
-  const { isDark, setScreen, currencyConfig, t, addTransaction, language, isPremium, aiToolUsageCount, isAiToolLocked, incrementAiToolUsage, triggerPremiumModal, addExpenseInitialMode, setAddExpenseInitialMode } = useApp();
+  const { 
+    isDark, setScreen, currencyConfig, t, 
+    addTransaction, updateTransaction, language, 
+    isPremium, aiToolUsageCount, isAiToolLocked, 
+    incrementAiToolUsage, triggerPremiumModal, 
+    addExpenseInitialMode, setAddExpenseInitialMode,
+    editingTransaction, setEditingTransaction
+  } = useApp();
   const [entryMode, setEntryMode] = useState<EntryMode>(addExpenseInitialMode);
 
-  const [txType, setTxType] = useState<TxType>("expense");
-  const [amount, setAmount] = useState("0");
-  const [selectedCatId, setSelectedCatId] = useState<string>("");
-  const [linkedSourceId, setLinkedSourceId] = useState<string>("");
-  const [note, setNote] = useState("");
+  const [txType, setTxType] = useState<TxType>(editingTransaction?.type || "expense");
+  const [amount, setAmount] = useState(editingTransaction?.amount.toString() || "0");
+  const [selectedCatId, setSelectedCatId] = useState<string>(editingTransaction?.category || "");
+  const [linkedSourceId, setLinkedSourceId] = useState<string>(editingTransaction?.linkedIncomeCategoryId || "");
+  const [note, setNote] = useState(editingTransaction?.note || "");
+  const [selectedDate, setSelectedDate] = useState<Date>(editingTransaction?.date || new Date());
   const [isSaving, setIsSaving] = useState(false);
   const [showCatPicker, setShowCatPicker] = useState(false);
+  
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Voice State
   const [isListening, setIsListening] = useState(false);
@@ -141,6 +151,13 @@ export function AddExpense() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addExpenseInitialMode]);
 
+  // Clean up editing state on unmount
+  useEffect(() => {
+    return () => {
+      setEditingTransaction(null);
+    };
+  }, [setEditingTransaction]);
+
   function handleNumpad(key: string) {
     if (key === "⌫") {
       setAmount((prev) => (prev.length <= 1 ? "0" : prev.slice(0, -1)));
@@ -157,18 +174,20 @@ export function AddExpense() {
     
     setIsSaving(true);
     
-    // Construct transaction object
-    const newTx = {
+    const txData = {
       title: note || (txType === "expense" ? "Misc Expense" : "Misc Income"),
       amount: parseFloat(amount),
       category: selectedCatId || (txType === "income" ? "salary" : "other"),
       type: txType,
       linkedIncomeCategoryId: (txType === "expense") ? linkedSourceId : undefined,
-      date: new Date()
+      date: selectedDate
     };
 
-    // Add to context
-    addTransaction(newTx);
+    if (editingTransaction) {
+      updateTransaction(editingTransaction.id, txData);
+    } else {
+      addTransaction(txData);
+    }
     
     // Redirect after animation
     setTimeout(() => {
@@ -459,7 +478,19 @@ export function AddExpense() {
           <div className={cn("mx-3 h-px", isDark ? "bg-white/[0.06]" : "bg-slate-100")} />
 
           {/* Date */}
-          <div className="flex items-center gap-3 p-3">
+          <div 
+            className="flex items-center gap-3 p-3 cursor-pointer active:opacity-60 transition-opacity relative"
+            onClick={() => dateInputRef.current?.showPicker()}
+          >
+            <input 
+              ref={dateInputRef}
+              type="date" 
+              className="absolute inset-0 opacity-0 pointer-events-none"
+              value={selectedDate.toISOString().split('T')[0]}
+              onChange={(e) => {
+                if (e.target.value) setSelectedDate(new Date(e.target.value));
+              }}
+            />
             <div className={cn(
               "w-10 h-10 rounded-xl flex items-center justify-center",
               isDark ? "bg-slate-700" : "bg-slate-100"
@@ -469,8 +500,12 @@ export function AddExpense() {
             <div className="flex-1">
               <p className={cn("text-xs", isDark ? "text-slate-500" : "text-slate-400")}>{t("date")}</p>
               <p className={cn("text-sm font-semibold", isDark ? "text-white" : "text-slate-800")}>
-                Today, {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })}
+                {selectedDate.toDateString() === new Date().toDateString() ? "Today, " : ""}
+                {selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
               </p>
+            </div>
+            <div className={cn("text-[9px] font-black uppercase px-2 py-0.5 rounded-md", isDark ? "bg-white/10 text-slate-400" : "bg-slate-100 text-slate-500")}>
+              Change
             </div>
           </div>
 
@@ -604,7 +639,7 @@ export function AddExpense() {
               </motion.div>
             ) : (
               <motion.span key="save" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                {txType === "expense" ? t("save_expense") : t("save_income")}
+                {editingTransaction ? "Update Transaction" : (txType === "expense" ? t("save_expense") : t("save_income"))}
               </motion.span>
             )}
           </AnimatePresence>

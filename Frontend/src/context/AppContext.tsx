@@ -8,7 +8,7 @@ import {
   fetchSavingsGoals, saveSavingsGoal,
   fetchFinancialGoals, saveFinancialGoal, updateFinancialGoal, deleteFinancialGoal,
   saveUserProfile, updateBudgetSpent,
-  fetchCategories, saveCategory, removeCategory, removeTransaction,
+  fetchCategories, saveCategory, removeCategory, removeTransaction, updateTransaction as updateTxFirestore,
 } from "@/lib/firestore";
 
 export type Screen =
@@ -118,7 +118,10 @@ export interface AppContextType {
   balance: number;
   transactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, "id">) => void;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => void;
   removeTransaction: (id: string) => void;
+  editingTransaction: Transaction | null;
+  setEditingTransaction: (tx: Transaction | null) => void;
   categories: Category[];
   addCategory: (cat: Omit<Category, "id">) => void;
   deleteCategory: (id: string) => void;
@@ -248,6 +251,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [savingsGoals, setSavingsGoals] = useState<SavingGoal[]>([]);
   const [financialGoals, setFinancialGoals] = useState<FinancialGoal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
@@ -497,10 +501,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, budgets, addNotification]);
 
+  const updateTransaction = useCallback((id: string, updates: Partial<Transaction>) => {
+    const oldTx = transactions.find(t => t.id === id);
+    if (!oldTx) return;
+
+    const updatedTx = { ...oldTx, ...updates } as Transaction;
+    setTransactions(prev => prev.map(t => t.id === id ? updatedTx : t));
+
+    // Update budgets if amount or category or type changed
+    const typeChanged = updates.type && updates.type !== oldTx.type;
+    const amountChanged = updates.amount !== undefined && updates.amount !== oldTx.amount;
+    const categoryChanged = updates.category !== undefined && updates.category !== oldTx.category;
+
+    if (typeChanged || amountChanged || categoryChanged) {
+      setBudgets(prev => prev.map(b => {
+        let newSpent = b.spent;
+        
+        // Handle old transaction removal from budget
+        if (oldTx.type === "expense" && b.category.toLowerCase() === oldTx.category.toLowerCase()) {
+          newSpent -= oldTx.amount;
+        }
+
+        // Handle new transaction addition to budget
+        if (updatedTx.type === "expense" && b.category.toLowerCase() === updatedTx.category.toLowerCase()) {
+          newSpent += updatedTx.amount;
+        }
+
+        if (newSpent !== b.spent) {
+          if (user) updateBudgetSpent(user.id, b.id, newSpent).catch(console.error);
+          return { ...b, spent: newSpent };
+        }
+        return b;
+      }));
+    }
+
+    if (user) {
+      updateTxFirestore(user.id, id, updates).catch(console.error);
+    }
+  }, [user, transactions]);
+
   const removeTx = useCallback((id: string) => {
+    const txToRemove = transactions.find(t => t.id === id);
     setTransactions(prev => prev.filter(t => t.id !== id));
+    
+    if (txToRemove && txToRemove.type === "expense") {
+      setBudgets(prev => prev.map(b => {
+        if (b.category.toLowerCase() === txToRemove.category.toLowerCase()) {
+          const newSpent = Math.max(0, b.spent - txToRemove.amount);
+          if (user) updateBudgetSpent(user.id, b.id, newSpent).catch(console.error);
+          return { ...b, spent: newSpent };
+        }
+        return b;
+      }));
+    }
+
     if (user) removeTransaction(user.id, id).catch(console.error);
-  }, [user]);
+  }, [user, transactions]);
 
   const addBudget = useCallback((budget: Omit<Budget, "id" | "spent">) => {
     const tempId = Math.random().toString(36).substr(2, 9);
@@ -825,7 +881,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         balance,
         transactions,
         addTransaction,
+        updateTransaction,
         removeTransaction: removeTx,
+        editingTransaction,
+        setEditingTransaction,
         categories,
         addCategory,
         deleteCategory,

@@ -8,10 +8,13 @@ import { cn, formatDate } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
 import { CATEGORIES } from "@/lib/data";
 import { Transaction } from "@/context/AppContext";
-import { ArrowUpRight, ArrowDownLeft, Search, SlidersHorizontal, ReceiptText } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Search, SlidersHorizontal, ReceiptText, Pencil, Trash2, X } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
-function TxRow({ tx, i, isDark, animate = true, isMounted }: { tx: Transaction; i: number; isDark: boolean; animate?: boolean; isMounted: boolean }) {
+function TxRow({ tx, i, isDark, animate = true, isMounted, onClick }: { 
+  tx: Transaction; i: number; isDark: boolean; animate?: boolean; isMounted: boolean;
+  onClick?: (tx: Transaction) => void;
+}) {
   const { categories, currencyConfig } = useApp();
   const cat = categories.find((c) => c.id === tx.category);
   const source = tx.linkedIncomeCategoryId ? categories.find(c => c.id === tx.linkedIncomeCategoryId) : null;
@@ -24,9 +27,10 @@ function TxRow({ tx, i, isDark, animate = true, isMounted }: { tx: Transaction; 
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.04 * i + 0.1, duration: 0.3 }}
       className={cn(
-        "flex items-center gap-3.5 px-5 py-3.5 transition-colors active:scale-[0.99]",
+        "flex items-center gap-3.5 px-5 py-3.5 transition-colors active:scale-[0.99] cursor-pointer",
         isDark ? "hover:bg-white/[0.03]" : "hover:bg-slate-50/80"
       )}
+      onClick={() => onClick?.(tx)}
     >
       <div
         className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0"
@@ -65,6 +69,24 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isMounted, setIsMounted] = useState(false);
+  const [selectedTxForMenu, setSelectedTxForMenu] = useState<Transaction | null>(null);
+  const { removeTransaction, setEditingTransaction, setScreen } = useApp();
+
+  const handleEdit = () => {
+    if (selectedTxForMenu) {
+      setEditingTransaction(selectedTxForMenu);
+      setScreen("add-expense");
+      setSelectedTxForMenu(null);
+      setShowAll(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (selectedTxForMenu && confirm("Are you sure you want to delete this transaction?")) {
+      removeTransaction(selectedTxForMenu.id);
+      setSelectedTxForMenu(null);
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -107,7 +129,7 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
             </div>
           ) : (
             transactions.slice(0, 6).map((tx, i) => (
-              <TxRow key={tx.id} tx={tx} i={i} isDark={isDark} isMounted={isMounted} />
+              <TxRow key={tx.id} tx={tx} i={i} isDark={isDark} isMounted={isMounted} onClick={setSelectedTxForMenu} />
             ))
           )}
         </div>
@@ -211,7 +233,7 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
         <div className={cn("divide-y", isDark ? "divide-white/[0.04]" : "divide-slate-100/50")}>
           <AnimatePresence>
             {filtered.length > 0 ? (
-              filtered.map((tx, i) => <TxRow key={tx.id} tx={tx} i={i} isDark={isDark} isMounted={isMounted} />)
+              filtered.map((tx, i) => <TxRow key={tx.id} tx={tx} i={i} isDark={isDark} isMounted={isMounted} onClick={setSelectedTxForMenu} />)
             ) : (
               <motion.p
                 initial={{ opacity: 0 }}
@@ -224,6 +246,60 @@ export function TransactionList({ isDark }: { isDark: boolean }) {
           </AnimatePresence>
         </div>
         <div className="h-8" />
+      </BottomSheet>
+
+      {/* Transaction Action Menu */}
+      <BottomSheet 
+        open={!!selectedTxForMenu} 
+        onClose={() => setSelectedTxForMenu(null)} 
+        isDark={isDark} 
+        title="Manage Transaction"
+        subtitle={selectedTxForMenu?.title}
+      >
+        <div className="px-5 pb-8 space-y-3">
+          <button 
+            onClick={handleEdit}
+            className={cn(
+              "w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all",
+              isDark ? "bg-slate-800 text-white hover:bg-slate-700" : "bg-slate-50 text-slate-800 hover:bg-slate-100"
+            )}
+          >
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+              <Pencil size={18} />
+            </div>
+            <div className="text-left">
+              <p className="text-sm">Edit Transaction</p>
+              <p className={cn("text-[10px] font-medium opacity-50", isDark ? "text-slate-400" : "text-slate-500")}>Change amount, date or category</p>
+            </div>
+          </button>
+
+          <button 
+            onClick={handleDelete}
+            className={cn(
+              "w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all",
+              isDark ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/15" : "bg-rose-50 text-rose-600 hover:bg-rose-100"
+            )}
+          >
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500">
+              <Trash2 size={18} />
+            </div>
+            <div className="text-left">
+              <p className="text-sm">Delete Forever</p>
+              <p className="text-[10px] font-medium opacity-60">This action cannot be undone</p>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => setSelectedTxForMenu(null)}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 p-4 rounded-2xl font-bold mt-2",
+              isDark ? "text-slate-500" : "text-slate-400"
+            )}
+          >
+            <X size={16} />
+            <span>Cancel</span>
+          </button>
+        </div>
       </BottomSheet>
     </>
   );
