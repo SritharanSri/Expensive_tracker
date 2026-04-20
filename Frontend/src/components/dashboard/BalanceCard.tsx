@@ -99,11 +99,11 @@ export function BalanceCard({ isDark }: { isDark: boolean }) {
         <div className="flex gap-2">
           <div className="flex-1 bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/5">
             <p className="text-white/50 text-[10px] uppercase font-bold mb-1">{t("dash_monthly_income")}</p>
-            <p className="text-white font-bold text-sm">{formatCurrency(monthlyIncome, currencyConfig, true)}</p>
+            <p className="text-white font-bold text-sm">{formatCurrency(monthlyIncome, currencyConfig)}</p>
           </div>
           <div className="flex-1 bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/5">
             <p className="text-white/50 text-[10px] uppercase font-bold mb-1">{t("dash_spent_so_far")}</p>
-            <p className="text-white font-bold text-sm">{formatCurrency(monthlyExpense, currencyConfig, true)}</p>
+            <p className="text-white font-bold text-sm">{formatCurrency(monthlyExpense, currencyConfig)}</p>
           </div>
         </div>
       </GradientCard>

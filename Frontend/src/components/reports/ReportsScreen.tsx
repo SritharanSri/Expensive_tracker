@@ -183,7 +183,7 @@ export function ReportsScreen() {
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{s.label}</p>
             <p className={cn("text-xl font-black", isDark ? "text-white" : "text-slate-900")}>
-              {formatCurrency(s.value, currencyConfig, true)}
+              {formatCurrency(s.value, currencyConfig)}
             </p>
           </motion.div>
         ))}
@@ -227,11 +227,11 @@ export function ReportsScreen() {
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-6">
                             <span className="text-[10px] font-bold text-emerald-500">INCOME</span>
-                            <span className="text-xs font-black text-emerald-500">{formatCurrency(payload[0].value as number, currencyConfig, true)}</span>
+                            <span className="text-xs font-black text-emerald-500">{formatCurrency(payload[0].value as number, currencyConfig)}</span>
                           </div>
                           <div className="flex items-center justify-between gap-6">
                             <span className="text-[10px] font-bold text-rose-500">EXPENSE</span>
-                            <span className="text-xs font-black text-rose-500">{formatCurrency(payload[1].value as number, currencyConfig, true)}</span>
+                            <span className="text-xs font-black text-rose-500">{formatCurrency(payload[1].value as number, currencyConfig)}</span>
                           </div>
                         </div>
                       </div>
@@ -289,7 +289,7 @@ export function ReportsScreen() {
                         return (
                           <div className={cn("p-3 rounded-2xl border backdrop-blur-xl shadow-xl", isDark ? "bg-slate-900/90 border-white/10" : "bg-white/90 border-slate-200")}>
                             <p className="text-[10px] font-black text-center">{payload[0].name}</p>
-                            <p className="text-xs font-black text-center mt-1">{formatCurrency(payload[0].value as number, currencyConfig, true)}</p>
+                            <p className="text-xs font-black text-center mt-1">{formatCurrency(payload[0].value as number, currencyConfig)}</p>
                           </div>
                         );
                       }
@@ -339,7 +339,7 @@ export function ReportsScreen() {
             </p>
             <div className="flex items-center gap-1 mt-2">
               <TrendingUp size={10} className="text-rose-500" />
-              <span className="text-[8px] font-bold text-slate-500">{formatCurrency(topCategory?.value || 0, currencyConfig, true)}</span>
+              <span className="text-[8px] font-bold text-slate-500">{formatCurrency(topCategory?.value || 0, currencyConfig)}</span>
             </div>
           </GlassCard>
 
@@ -349,7 +349,7 @@ export function ReportsScreen() {
             </div>
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">Avg Spend</p>
             <p className={cn("text-sm font-black", isDark ? "text-white" : "text-slate-900")}>
-              {formatCurrency(avgMonthlyExpense, currencyConfig, true)}
+              {formatCurrency(avgMonthlyExpense, currencyConfig)}
             </p>
             <p className="text-[8px] font-bold text-slate-500 mt-2">Per Month</p>
           </GlassCard>
@@ -382,7 +382,7 @@ export function ReportsScreen() {
                 <div>
                    <p className="text-[9px] font-black uppercase text-slate-500 mb-2">Estimated Total Outflow</p>
                    <p className={cn("text-3xl font-black tracking-tighter", isDark ? "text-white" : "text-slate-900")}>
-                    {formatCurrency(predictedNext, currencyConfig, true)}
+                    {formatCurrency(predictedNext, currencyConfig)}
                    </p>
                 </div>
                 <div className="text-right">
@@ -435,7 +435,7 @@ export function ReportsScreen() {
                       </div>
                       <div>
                         <p className={cn("text-sm font-black", isDark ? "text-white" : "text-slate-900")}>{source.name}</p>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{formatCurrency(source.total, currencyConfig, true)} Received</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{formatCurrency(source.total, currencyConfig)} Received</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -458,11 +458,11 @@ export function ReportsScreen() {
                   <div className="flex justify-between items-center mt-5 pt-4 border-t border-white/[0.04]">
                      <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formatCurrency(source.spent, currencyConfig, true)} OUT</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formatCurrency(source.spent, currencyConfig)} OUT</span>
                      </div>
                      <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formatCurrency(source.total - source.spent, currencyConfig, true)} REMAINING</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formatCurrency(source.total - source.spent, currencyConfig)} REMAINING</span>
                      </div>
                   </div>
                 </GlassCard>

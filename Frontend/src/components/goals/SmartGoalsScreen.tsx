@@ -441,8 +441,8 @@ function GoalCard({
                   initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1.2, ease: "easeOut" }} />
               </div>
               <div className="flex justify-between mt-1">
-                <span className="text-[10px] text-slate-500 font-bold">{formatCurrency(goal.currentAmount, currencyConfig, true)}</span>
-                <span className={cn("text-[10px] font-black", isDark ? "text-slate-400" : "text-slate-600")}>{formatCurrency(goal.targetAmount, currencyConfig, true)}</span>
+                <span className="text-[10px] text-slate-500 font-bold">{formatCurrency(goal.currentAmount, currencyConfig)}</span>
+                <span className={cn("text-[10px] font-black", isDark ? "text-slate-400" : "text-slate-600")}>{formatCurrency(goal.targetAmount, currencyConfig)}</span>
               </div>
             </div>
             <div className={cn("ml-1 transition-transform duration-200", expanded ? "rotate-180" : "")}>
@@ -461,7 +461,7 @@ function GoalCard({
                 {/* Key stats */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "Save/Mo", value: formatCurrency(req, currencyConfig, true), icon: DollarSign, color: "text-indigo-400" },
+                    { label: "Save/Mo", value: formatCurrency(req, currencyConfig), icon: DollarSign, color: "text-indigo-400" },
                     { label: "Days Left", value: days > 0 ? `${days}d` : "Done!", icon: Clock, color: "text-amber-400" },
                     { label: "Progress", value: `${pct}%`, icon: BarChart3, color: cfg.color },
                   ].map(({ label, value, icon: Icon, color }) => (

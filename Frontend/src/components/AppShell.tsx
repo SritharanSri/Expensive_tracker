@@ -66,7 +66,7 @@ export function AppShell() {
   return (
     <div
       className={cn(
-        "relative w-full min-h-screen max-w-[430px] mx-auto overflow-hidden",
+        "relative w-full h-screen max-w-[430px] mx-auto overflow-hidden",
         isDark ? "dark bg-[#0B1120]" : "bg-[#F8FAFC]"
       )}
     >
@@ -86,7 +86,7 @@ export function AppShell() {
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.05}
           onDragEnd={(_, info) => handleSwipe(info.offset.x)}
-          className="absolute inset-0 w-full h-full"
+          className="absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden no-scrollbar"
         >
           {currentScreen === "signin" && <SignInScreen />}
           {currentScreen === "signup" && <SignUpScreen />}
