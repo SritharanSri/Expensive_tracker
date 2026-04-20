@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { TopBar } from "@/components/layout/TopBar";
 import dynamic from "next/dynamic";
 const BalanceCard = dynamic(() => import("./BalanceCard").then(mod => mod.BalanceCard), { ssr: false, loading: () => <div className="h-48 w-full bg-slate-800/20 animate-pulse rounded-[32px] mx-5 mt-6 mb-8" /> });
@@ -44,7 +44,12 @@ import { formatCurrency } from "@/lib/currency";
 import { CATEGORIES } from "@/lib/data";
 
 export function Dashboard() {
-  const { isDark, isPremium, setScreen, balance, currencyConfig, t, language, transactions, budgets, addTransaction, addNotification, triggerPremiumModal, aiToolUsageCount, aiQueryCount, financialGoals, setAddExpenseInitialMode } = useApp();
+  const { 
+    isDark, isPremium, setScreen, balance, currencyConfig, t, language, 
+    transactions, budgets, addTransaction, addNotification, triggerPremiumModal, 
+    aiToolUsageCount, aiQueryCount, financialGoals, setAddExpenseInitialMode,
+    sheetOpen
+  } = useApp();
   const [isMounted, setIsMounted] = useState(false);
   const [today, setToday] = useState("");
 
@@ -304,20 +309,28 @@ export function Dashboard() {
       </div>
 
       {/* Quick Voice Add FAB (navigates to Voice section of Add Expense) */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => {
-          setAddExpenseInitialMode("voice");
-          setScreen("add-expense");
-        }}
-        className={cn(
-          "fixed bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl shadow-indigo-500/20 flex items-center justify-center z-50 border-4 transition-all cursor-pointer bg-indigo-600 text-white",
-          isDark ? "border-slate-900" : "border-slate-50"
+      <AnimatePresence>
+        {!sheetOpen && (
+          <motion.button
+            key="mic-fab"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              setAddExpenseInitialMode("voice");
+              setScreen("add-expense");
+            }}
+            className={cn(
+              "fixed bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl shadow-indigo-500/20 flex items-center justify-center z-50 border-4 transition-all cursor-pointer bg-indigo-600 text-white",
+              isDark ? "border-slate-900" : "border-slate-50"
+            )}
+          >
+            <Mic size={26} strokeWidth={2.5} />
+          </motion.button>
         )}
-      >
-        <Mic size={26} strokeWidth={2.5} />
-      </motion.button>
+      </AnimatePresence>
     </motion.div>
   );
 }

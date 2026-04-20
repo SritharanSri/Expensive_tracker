@@ -24,6 +24,7 @@ export interface UserProfile {
   bio?: string;
   avatar?: string; // hex color for initials avatar
   joinedDate: string;
+  hiddenCategoryIds?: string[];
 }
 
 export type TransactionType = "income" | "expense" | "investment";
@@ -270,6 +271,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editingFinancialGoal, setEditingFinancialGoal] = useState<FinancialGoal | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   // Premium Access State
@@ -368,8 +370,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (cancelled) return;
 
       // Merge system categories with user custom categories
-      const allCats = [...CATEGORIES.map(c => ({ ...c, type: (c.id === "salary" || c.id === "freelance" || c.id === "investment") ? "income" : "expense", isSystem: true } as Category)), ...userCats];
+      const hiddenIds = user?.hiddenCategoryIds || [];
+      const allCats = [
+        ...CATEGORIES
+          .filter(c => !hiddenIds.includes(c.id))
+          .map(c => ({ 
+            ...c, 
+            type: (c.id === "salary" || c.id === "freelance" || c.id === "investment") ? "income" : "expense", 
+            isSystem: true 
+          } as Category)), 
+        ...userCats
+      ];
       setCategories(allCats);
+      setHiddenCategoryIds(hiddenIds);
 
       setTransactions(txs);
 
@@ -439,9 +452,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const deleteCategory = useCallback((id: string) => {
-    setCategories(prev => prev.filter(c => c.id !== id));
-    if (user) removeCategory(user.id, id).catch(console.error);
-  }, [user]);
+    const catToDelete = categories.find(c => c.id === id);
+    if (!catToDelete) return;
+
+    if (catToDelete.isSystem) {
+      setHiddenCategoryIds(prev => {
+        const updated = [...prev, id];
+        if (user) {
+          updateProfile({ hiddenCategoryIds: updated });
+        }
+        return updated;
+      });
+      setCategories(prev => prev.filter(c => c.id !== id));
+    } else {
+      setCategories(prev => prev.filter(c => c.id !== id));
+      if (user) removeCategory(user.id, id).catch(console.error);
+    }
+  }, [user, categories, updateProfile]);
 
   const addNotification = useCallback((notif: Omit<AppNotification, "id" | "time" | "unread">) => {
     const newNotif: AppNotification = {

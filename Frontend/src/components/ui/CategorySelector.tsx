@@ -138,47 +138,45 @@ export function CategorySelector({ type, selectedId, onSelect, isDark }: Categor
                         <Check size={14} className="text-indigo-500" />
                       )}
                       
-                      {!cat.isSystem && (
-                        <div className="flex items-center">
-                          {confirmDeleteId === cat.id ? (
-                            <div className="flex items-center gap-1 bg-rose-500 rounded-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-                               <button 
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   deleteCategory(cat.id);
-                                   if (selectedId === cat.id) onSelect("");
-                                   setConfirmDeleteId(null);
-                                 }}
-                                 className="p-1 px-2 text-[8px] font-black text-white hover:bg-rose-600 transition-colors"
-                               >
-                                 DELETE
-                               </button>
-                               <button 
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   setConfirmDeleteId(null);
-                                 }}
-                                 className="p-1 px-2 text-[8px] font-black text-rose-100 hover:bg-rose-600 border-l border-rose-400"
-                               >
-                                 ESC
-                               </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmDeleteId(cat.id);
-                              }}
-                              className={cn(
-                                "p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100",
-                                isDark ? "bg-white/10 hover:bg-rose-500/20 text-slate-400 hover:text-rose-500" : "bg-slate-200 hover:bg-rose-50 text-slate-500 hover:text-rose-500"
-                              )}
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex items-center">
+                        {confirmDeleteId === cat.id ? (
+                          <div className="flex items-center gap-1 bg-rose-500 rounded-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                             <button 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 deleteCategory(cat.id);
+                                 if (selectedId === cat.id) onSelect("");
+                                 setConfirmDeleteId(null);
+                               }}
+                               className="p-1 px-2 text-[8px] font-black text-white hover:bg-rose-600 transition-colors"
+                             >
+                               DELETE
+                             </button>
+                             <button 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 setConfirmDeleteId(null);
+                               }}
+                               className="p-1 px-2 text-[8px] font-black text-rose-100 hover:bg-rose-600 border-l border-rose-400"
+                             >
+                               ESC
+                             </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeleteId(cat.id);
+                            }}
+                            className={cn(
+                              "p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100",
+                              isDark ? "bg-white/10 hover:bg-rose-500/20 text-slate-400 hover:text-rose-500" : "bg-slate-200 hover:bg-rose-50 text-slate-500 hover:text-rose-500"
+                            )}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <motion.div 
