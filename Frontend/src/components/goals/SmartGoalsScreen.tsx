@@ -693,14 +693,13 @@ export function SmartGoalsScreen() {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              {[
                 { label: "Total Goals", value: financialGoals.length, color: "text-white" },
                 { label: "On Track",    value: onTrackCount, color: "text-emerald-400" },
-                { label: "Monthly Free", value: formatCurrency(Math.max(0, snapshot.monthlySavings - totalRequired), currencyConfig), color: snapshot.monthlySavings > totalRequired ? "text-emerald-400" : "text-rose-400" },
+                { label: "Monthly Free", value: formatCurrency(Math.max(0, snapshot.monthlySavings - totalRequired), { ...currencyConfig, locale: currencyConfig.locale }).split('.')[0], color: snapshot.monthlySavings > totalRequired ? "text-emerald-400" : "text-rose-400" },
               ].map(({ label, value, color }) => (
-                <div key={label} className="bg-white/10 rounded-2xl p-3 border border-white/10 text-center">
-                  <p className={cn("font-black text-base", color)}>{value}</p>
-                  <p className="text-white/50 text-[9px] font-bold uppercase mt-0.5">{label}</p>
+                <div key={label} className="bg-white/10 rounded-2xl p-2 border border-white/10 text-center flex flex-col justify-center min-w-0">
+                  <p className={cn("font-black text-[13px] truncate px-1", color)}>{value}</p>
+                  <p className="text-white/50 text-[8px] font-bold uppercase mt-0.5 truncate">{label}</p>
                 </div>
               ))}
             </div>
