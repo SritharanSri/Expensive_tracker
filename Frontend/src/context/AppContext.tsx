@@ -763,13 +763,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const randomTx = smsTxs[Math.floor(Math.random() * smsTxs.length)];
     addTransaction(randomTx);
     addNotification({
-      id: Date.now().toString(),
       title: "Bank SMS Tracked",
       desc: `Auto-tracked: ${randomTx.title}`,
-      time: new Date(),
       icon: "zap",
       color: "text-indigo-500",
-      unread: true
     });
   }, [automationEnabled, addTransaction, addNotification]);
 
