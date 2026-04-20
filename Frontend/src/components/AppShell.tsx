@@ -67,10 +67,10 @@ export function AppShell() {
     <div
       className={cn(
         "relative w-full min-h-screen max-w-[430px] mx-auto overflow-hidden",
-        isDark ? "dark" : ""
+        isDark ? "dark bg-[#0B1120]" : "bg-[#F8FAFC]"
       )}
     >
-      <AnimatePresence mode="wait" custom={direction} initial={false}>
+      <AnimatePresence custom={direction} initial={false}>
         <motion.div
           key={currentScreen}
           custom={direction}
@@ -84,9 +84,9 @@ export function AppShell() {
           }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
+          dragElastic={0.05}
           onDragEnd={(_, info) => handleSwipe(info.offset.x)}
-          className="w-full h-full min-h-screen"
+          className="absolute inset-0 w-full h-full"
         >
           {currentScreen === "signin" && <SignInScreen />}
           {currentScreen === "signup" && <SignUpScreen />}
