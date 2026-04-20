@@ -197,13 +197,15 @@ function WhatIfSheet({
 }
 
 // ── New Goal Sheet ─────────────────────────────────────────────────────────────
-function NewGoalSheet({
-  open, onClose, isDark, currencyConfig, monthlySavings, onAdd,
+function GoalFormSheet({
+  open, onClose, isDark, currencyConfig, monthlySavings, onAdd, onUpdate, editingGoal
 }: {
   open: boolean; onClose: () => void; isDark: boolean;
   currencyConfig: { symbol: string; code: string; locale: string };
   monthlySavings: number;
   onAdd: (goal: Omit<FinancialGoal, "id" | "createdAt" | "conflicts" | "aiInsight">) => void;
+  onUpdate: (id: string, updates: Partial<FinancialGoal>) => void;
+  editingGoal: FinancialGoal | null;
 }) {
   const [name, setName]       = useState("");
   const [icon, setIcon]       = useState("🎯");
@@ -211,6 +213,22 @@ function NewGoalSheet({
   const [timeline, setTimeline] = useState<FinancialGoal["timeline"]>("6months");
   const [customDate, setCustomDate] = useState("");
   const [saving, setSaving]   = useState(false);
+
+  useEffect(() => {
+    if (editingGoal) {
+      setName(editingGoal.name);
+      setIcon(editingGoal.icon);
+      setAmount(editingGoal.targetAmount.toString());
+      setTimeline(editingGoal.timeline);
+      setCustomDate(editingGoal.timeline === "custom" ? editingGoal.targetDate || "" : "");
+    } else {
+      setName("");
+      setIcon("🎯");
+      setAmount("");
+      setTimeline("6months");
+      setCustomDate("");
+    }
+  }, [editingGoal, open]);
 
   const computeTargetDate = (): string => {
     const now = new Date();
@@ -220,27 +238,33 @@ function NewGoalSheet({
     return now.toISOString().split("T")[0];
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!name.trim() || !amount || isNaN(Number(amount))) return;
     setSaving(true);
     const targetDate = computeTargetDate();
     const target = Number(amount);
-    const remaining = target; // new goal, no current amount
+    const remaining = target - (editingGoal?.currentAmount || 0); 
     const tDate = new Date(targetDate);
     const monthsLeft = Math.max(0.1, (tDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30.44));
     const reqPerMonth = remaining / monthsLeft;
     const aiApproved = monthlySavings >= reqPerMonth;
     const status: GoalStatus = aiApproved ? "on_track" : monthlySavings >= reqPerMonth * 0.7 ? "at_risk" : "not_feasible";
 
-    onAdd({
-      name: name.trim(), icon, targetAmount: target, currentAmount: 0,
-      timeline, targetDate, status, aiApproved, commitmentMode: false,
-      priority: 999, monthlyRequired: reqPerMonth,
-    });
+    if (editingGoal) {
+      onUpdate(editingGoal.id, {
+        name: name.trim(), icon, targetAmount: target,
+        timeline, targetDate, status, aiApproved, monthlyRequired: reqPerMonth,
+      });
+    } else {
+      onAdd({
+        name: name.trim(), icon, targetAmount: target, currentAmount: 0,
+        timeline, targetDate, status, aiApproved, commitmentMode: false,
+        priority: 999, monthlyRequired: reqPerMonth,
+      });
+    }
 
     setTimeout(() => {
       setSaving(false); onClose();
-      setName(""); setAmount(""); setIcon("🎯"); setTimeline("6months"); setCustomDate("");
     }, 800);
   };
 
@@ -328,11 +352,11 @@ function NewGoalSheet({
           </motion.div>
         )}
 
-        <motion.button whileTap={{ scale: 0.97 }} onClick={handleCreate} disabled={saving || !name.trim() || !amount}
+        <motion.button whileTap={{ scale: 0.97 }} onClick={handleSave} disabled={saving || !name.trim() || !amount}
           className={cn("w-full py-5 rounded-3xl font-black text-white text-base flex items-center justify-center gap-2 transition-all shadow-lg",
             saving || !name.trim() || !amount ? "opacity-50 cursor-not-allowed bg-indigo-600"
               : "bg-gradient-to-r from-indigo-600 to-violet-600 shadow-indigo-500/30")}>
-          {saving ? <><RefreshCw size={18} className="animate-spin" />Creating...</> : <><Sparkles size={18} />Create Smart Goal<ArrowRight size={16} /></>}
+          {saving ? <><RefreshCw size={18} className="animate-spin" />Saving...</> : <><Sparkles size={18} />{editingGoal ? "Update Goal" : "Create Smart Goal"}<ArrowRight size={16} /></>}
         </motion.button>
       </div>
     </BottomSheet>
@@ -342,7 +366,7 @@ function NewGoalSheet({
 // ── Goal Card ─────────────────────────────────────────────────────────────────
 function GoalCard({
   goal, monthlySavings, currencyConfig, isDark, isPremium,
-  onUpdate, onDelete, onContribute, onWhatIf, triggerPremiumModal, trackPremiumClick,
+  onUpdate, onDelete, onContribute, onWhatIf, onEdit, triggerPremiumModal, trackPremiumClick,
 }: {
   goal: FinancialGoal;
   monthlySavings: number;
@@ -353,6 +377,7 @@ function GoalCard({
   onDelete: (id: string) => void;
   onContribute: (id: string, amount: number, linkedId?: string) => void;
   onWhatIf: (goal: FinancialGoal) => void;
+  onEdit: (goal: FinancialGoal) => void;
   triggerPremiumModal: (msg: string) => void;
   trackPremiumClick: () => void;
 }) {
@@ -526,6 +551,11 @@ function GoalCard({
                         : isDark ? "bg-amber-500/10 border-amber-500/20 text-amber-500" : "bg-amber-50 border-amber-200 text-amber-600")}>
                     {isPremium ? <Zap size={12} /> : <Crown size={12} />}
                     {isPremium ? "What-If" : "Pro Only"}
+                  </button>
+                  <button onClick={() => onEdit(goal)}
+                    className={cn("py-2.5 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5 border transition-all",
+                      isDark ? "bg-white/5 border-white/10 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500")}>
+                    <Plus size={12} className="rotate-45" /> Edit Details
                   </button>
                   <button onClick={() => onUpdate(goal.id, { commitmentMode: !goal.commitmentMode })}
                     className={cn("py-2.5 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5 border transition-all",
@@ -771,6 +801,7 @@ export function SmartGoalsScreen() {
                 onDelete={deleteFinancialGoalItem}
                 onContribute={contributeToGoal}
                 onWhatIf={(g) => { setWhatIfGoal(g); }}
+                onEdit={(g) => { setEditingFinancialGoal(g); setShowNewGoal(true); }}
                 triggerPremiumModal={triggerPremiumModal}
                 trackPremiumClick={trackPremiumClick}
               />
@@ -779,13 +810,15 @@ export function SmartGoalsScreen() {
       </div>
 
       {/* ── Sheets ── */}
-      <NewGoalSheet
+      <GoalFormSheet
         open={showNewGoal}
-        onClose={() => setShowNewGoal(false)}
+        onClose={() => { setShowNewGoal(false); setEditingFinancialGoal(null); }}
         isDark={isDark}
         currencyConfig={currencyConfig}
         monthlySavings={snapshot.monthlySavings}
         onAdd={addFinancialGoal}
+        onUpdate={updateFinancialGoalItem}
+        editingGoal={editingFinancialGoal}
       />
       <WhatIfSheet
         open={!!whatIfGoal}

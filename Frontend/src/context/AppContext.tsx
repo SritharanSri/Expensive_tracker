@@ -138,6 +138,8 @@ export interface AppContextType {
   updateFinancialGoalItem: (id: string, updates: Partial<FinancialGoal>) => void;
   deleteFinancialGoalItem: (id: string) => void;
   contributeToGoal: (id: string, amount: number, linkedIncomeCategoryId?: string) => void;
+  editingFinancialGoal: FinancialGoal | null;
+  setEditingFinancialGoal: (goal: FinancialGoal | null) => void;
 
   // Notifications
   notifications: AppNotification[];
@@ -252,6 +254,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [financialGoals, setFinancialGoals] = useState<FinancialGoal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingFinancialGoal, setEditingFinancialGoal] = useState<FinancialGoal | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
@@ -610,12 +613,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, addNotification]);
 
-  const updateFinancialGoalItem = useCallback((id: string, updates: Partial<FinancialGoal>) => {
-    setFinancialGoals((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, ...updates } : g))
-    );
-    if (user) {
-      updateFinancialGoal(user.id, id, updates).catch(console.error);
+  const updateFinancialGoalItem = useCallback(async (id: string, updates: Partial<FinancialGoal>) => {
+    if (!user) return;
+    try {
+      await updateFinancialGoal(user.id, id, updates);
+      setFinancialGoals(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+    } catch (error) {
+      console.error("Error updating goal:", error);
     }
   }, [user]);
 
@@ -898,6 +902,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateFinancialGoalItem,
         deleteFinancialGoalItem,
         contributeToGoal,
+        editingFinancialGoal,
+        setEditingFinancialGoal,
         notifications,
         addNotification,
         markAllNotificationsRead,
