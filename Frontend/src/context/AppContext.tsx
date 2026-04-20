@@ -248,6 +248,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [country, setCountry] = useState("LK");
   const [language, setLanguage] = useState("English");
   const [automationEnabled, setAutomationEnabled] = useState(false);
+
+  // Persistence for automation (Smart SMS Tracking)
+  useEffect(() => {
+    if (user?.id) {
+      const saved = localStorage.getItem(`et_automation_${user.id}`);
+      if (saved !== null) setAutomationEnabled(saved === "true");
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      localStorage.setItem(`et_automation_${user.id}`, automationEnabled.toString());
+    }
+  }, [automationEnabled, user?.id]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingGoal[]>([]);
@@ -704,7 +718,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ];
     const randomTx = smsTxs[Math.floor(Math.random() * smsTxs.length)];
     addTransaction(randomTx);
-  }, [automationEnabled, addTransaction]);
+    addNotification({
+      id: Date.now().toString(),
+      title: "Bank SMS Tracked",
+      desc: `Auto-tracked: ${randomTx.title}`,
+      time: new Date(),
+      icon: "zap",
+      color: "text-indigo-500",
+      unread: true
+    });
+  }, [automationEnabled, addTransaction, addNotification]);
 
   const toggleAutomation = useCallback(() => {
     setAutomationEnabled(prev => !prev);
