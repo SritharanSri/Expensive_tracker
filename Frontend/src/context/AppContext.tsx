@@ -274,6 +274,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
+  const updateProfile = useCallback((data: Partial<Omit<UserProfile, "id" | "joinedDate">>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...data };
+      localStorage.setItem("et_user", JSON.stringify(updated));
+      const storedStr = localStorage.getItem("et_credentials");
+      if (storedStr) {
+        const stored = JSON.parse(storedStr);
+        stored.profile = updated;
+        localStorage.setItem("et_credentials", JSON.stringify(stored));
+      }
+      saveUserProfile(updated.id, updated).catch(console.error);
+      return updated;
+    });
+  }, []);
+
   // Premium Access State
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumModalMessage, setPremiumModalMessage] = useState("");
@@ -439,21 +455,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return transactions.reduce((acc, tx) => (tx.type === "income") ? acc + tx.amount : acc - tx.amount, 0);
   }, [transactions]);
 
-  const updateProfile = useCallback((data: Partial<Omit<UserProfile, "id" | "joinedDate">>) => {
-    setUser(prev => {
-      if (!prev) return prev;
-      const updated = { ...prev, ...data };
-      localStorage.setItem("et_user", JSON.stringify(updated));
-      const storedStr = localStorage.getItem("et_credentials");
-      if (storedStr) {
-        const stored = JSON.parse(storedStr);
-        stored.profile = updated;
-        localStorage.setItem("et_credentials", JSON.stringify(stored));
-      }
-      saveUserProfile(updated.id, updated).catch(console.error);
-      return updated;
-    });
-  }, []);
 
   const addCategory = useCallback((cat: Omit<Category, "id">) => {
     const tempId = Math.random().toString(36).substr(2, 9);
