@@ -1,6 +1,7 @@
 "use client";
 
-import { AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useApp } from "@/context/AppContext";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Dashboard } from "@/components/dashboard/Dashboard";
@@ -19,9 +20,48 @@ import { PremiumUpgrade } from "@/components/settings/PremiumUpgrade";
 import { cn } from "@/lib/utils";
 
 const NO_NAV_SCREENS = ["signin", "signup", "profile"];
+const SWIPE_SCREENS = ["dashboard", "budget", "reports", "goals", "settings"];
 
 export function AppShell() {
-  const { currentScreen, isDark, showPremiumModal, setShowPremiumModal } = useApp();
+  const { currentScreen, setScreen, isDark, showPremiumModal, setShowPremiumModal } = useApp();
+
+  const currentIndex = SWIPE_SCREENS.indexOf(currentScreen);
+  const [direction, setDirection] = useState(0); // 1 for forward, -1 for backward
+  const prevIndexRef = useRef(currentIndex);
+
+  useEffect(() => {
+    if (prevIndexRef.current !== currentIndex && currentIndex !== -1 && prevIndexRef.current !== -1) {
+      setDirection(currentIndex > prevIndexRef.current ? 1 : -1);
+    }
+    prevIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  const handleSwipe = (offset: number) => {
+    if (currentIndex === -1) return;
+
+    if (offset < -100 && currentIndex < SWIPE_SCREENS.length - 1) {
+      // Swipe Left -> Next
+      setScreen(SWIPE_SCREENS[currentIndex + 1]);
+    } else if (offset > 100 && currentIndex > 0) {
+      // Swipe Right -> Previous
+      setScreen(SWIPE_SCREENS[currentIndex - 1]);
+    }
+  };
+
+  const variants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? "100%" : direction < 0 ? "-100%" : 0,
+      opacity: 0
+    }),
+    center: {
+      x: 0,
+      opacity: 1
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? "-100%" : direction < 0 ? "100%" : 0,
+      opacity: 0
+    })
+  };
 
   return (
     <div
@@ -30,19 +70,37 @@ export function AppShell() {
         isDark ? "dark" : ""
       )}
     >
-      <AnimatePresence mode="wait">
-        {currentScreen === "signin" && <SignInScreen key="signin" />}
-        {currentScreen === "signup" && <SignUpScreen key="signup" />}
-        {currentScreen === "dashboard" && <Dashboard key="dashboard" />}
-        {currentScreen === "add-expense" && <AddExpense key="add-expense" />}
-        {currentScreen === "budget" && <BudgetScreen key="budget" />}
-        {currentScreen === "reports" && <ReportsScreen key="reports" />}
-        {currentScreen === "savings" && <SavingsScreen key="savings" />}
-        {currentScreen === "settings" && <SettingsScreen key="settings" />}
-        {currentScreen === "profile" && <ProfileScreen key="profile" />}
-        {currentScreen === "assistant" && <AIAssistant key="assistant" />}
-        {currentScreen === "planner" && <SmartPurchasePlanner key="planner" />}
-        {currentScreen === "goals" && <SmartGoalsScreen key="goals" />}
+      <AnimatePresence mode="wait" custom={direction} initial={false}>
+        <motion.div
+          key={currentScreen}
+          custom={direction}
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{
+            x: { type: "spring", stiffness: 300, damping: 30 },
+            opacity: { duration: 0.2 }
+          }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(_, info) => handleSwipe(info.offset.x)}
+          className="w-full h-full min-h-screen"
+        >
+          {currentScreen === "signin" && <SignInScreen />}
+          {currentScreen === "signup" && <SignUpScreen />}
+          {currentScreen === "dashboard" && <Dashboard />}
+          {currentScreen === "add-expense" && <AddExpense />}
+          {currentScreen === "budget" && <BudgetScreen />}
+          {currentScreen === "reports" && <ReportsScreen />}
+          {currentScreen === "savings" && <SavingsScreen />}
+          {currentScreen === "settings" && <SettingsScreen />}
+          {currentScreen === "profile" && <ProfileScreen />}
+          {currentScreen === "assistant" && <AIAssistant />}
+          {currentScreen === "planner" && <SmartPurchasePlanner />}
+          {currentScreen === "goals" && <SmartGoalsScreen />}
+        </motion.div>
       </AnimatePresence>
 
       <AnimatePresence>
