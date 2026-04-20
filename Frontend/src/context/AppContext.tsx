@@ -439,6 +439,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return transactions.reduce((acc, tx) => (tx.type === "income") ? acc + tx.amount : acc - tx.amount, 0);
   }, [transactions]);
 
+  const updateProfile = useCallback((data: Partial<Omit<UserProfile, "id" | "joinedDate">>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...data };
+      localStorage.setItem("et_user", JSON.stringify(updated));
+      const storedStr = localStorage.getItem("et_credentials");
+      if (storedStr) {
+        const stored = JSON.parse(storedStr);
+        stored.profile = updated;
+        localStorage.setItem("et_credentials", JSON.stringify(stored));
+      }
+      saveUserProfile(updated.id, updated).catch(console.error);
+      return updated;
+    });
+  }, []);
+
   const addCategory = useCallback((cat: Omit<Category, "id">) => {
     const tempId = Math.random().toString(36).substr(2, 9);
     const newCat = { ...cat, id: tempId, isSystem: false };
@@ -895,21 +911,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentScreen("signin");
   }, [user]);
 
-  const updateProfile = useCallback((data: Partial<Omit<UserProfile, "id" | "joinedDate">>) => {
-    setUser(prev => {
-      if (!prev) return prev;
-      const updated = { ...prev, ...data };
-      localStorage.setItem("et_user", JSON.stringify(updated));
-      const storedStr = localStorage.getItem("et_credentials");
-      if (storedStr) {
-        const stored = JSON.parse(storedStr);
-        stored.profile = updated;
-        localStorage.setItem("et_credentials", JSON.stringify(stored));
-      }
-      saveUserProfile(updated.id, updated).catch(console.error);
-      return updated;
-    });
-  }, []);
 
   const t = useCallback((key: TranslationKey) => {
     const lang = (language as Language) || "English";
