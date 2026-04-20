@@ -13,7 +13,7 @@ import {
   ChevronRight, Globe, Palette, Download, LogOut,
   User, Star, Check, Globe2, Languages, ShieldCheck, Crown,
   Zap, Bot, Mic, ScanLine, Target, MessageSquare, BarChart3,
-  BrainCircuit, Infinity as InfinityIcon, Lock, ClipboardPaste, AlertTriangle, FileText, Sparkles
+  BrainCircuit, Lock
 } from "lucide-react";
 
 interface ToggleProps {
@@ -102,57 +102,7 @@ export function SettingsScreen() {
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showSignOut, setShowSignOut] = useState(false);
-  const [showSmsPasteSheet, setShowSmsPasteSheet] = useState(false);
-  const [pastedText, setPastedText] = useState("");
-  const [isParsingSms, setIsParsingSms] = useState(false);
-  const [extractedSms, setExtractedSms] = useState<any>(null);
-  const [smsError, setSmsError] = useState<string | null>(null);
 
-  const handleParseSms = async () => {
-    if (!pastedText.trim()) return;
-    setIsParsingSms(true);
-    setSmsError(null);
-    setExtractedSms(null);
-
-    try {
-      const res = await fetch("/api/parse-sms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: pastedText }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        setExtractedSms(result.data);
-      } else {
-        setSmsError(result.message || "Failed to parse SMS. Please try again with a clearer bank notification.");
-      }
-    } catch (err) {
-      setSmsError("Network error. Please check your connection.");
-    } finally {
-      setIsParsingSms(false);
-    }
-  };
-
-  const handleSaveSmsTransaction = () => {
-    if (!extractedSms) return;
-    addTransaction({
-      title: extractedSms.merchant,
-      amount: extractedSms.amount,
-      category: extractedSms.category,
-      type: extractedSms.type as any,
-      date: new Date(),
-    });
-    // Trigger notification
-    addNotification({
-      title: "Transaction Saved",
-      desc: `Tracked ${extractedSms.merchant} from SMS`,
-      icon: "check",
-      color: "text-emerald-500"
-    });
-    setShowSmsPasteSheet(false);
-    setExtractedSms(null);
-    setPastedText("");
-  };
 
   const sectionClass = cn(
     "rounded-3xl overflow-hidden border",
@@ -359,23 +309,6 @@ export function SettingsScreen() {
           />
           <div className="h-px mx-5 bg-slate-200 dark:bg-white/5" />
           <SettingRow
-            icon={<Zap size={18} className="text-orange-500" />}
-            iconBg="rgba(249,115,22,0.1)"
-            label="Smart SMS Parser"
-            subtitle="Paste bank text to auto-track"
-            isDark={isDark}
-            onClick={() => {
-              if (isPremium) setShowSmsPasteSheet(true);
-              else triggerPremiumModal("Smart SMS Parser extracts expenses from bank notifications. This is a Premium feature.");
-            }}
-            right={
-              <div className="bg-indigo-600/20 px-2 py-0.5 rounded-full border border-indigo-600/30">
-                <span className="text-[8px] font-black text-indigo-400 uppercase">New AI</span>
-              </div>
-            }
-          />
-          <div className="h-px mx-5 bg-slate-200 dark:bg-white/5" />
-          <SettingRow
             icon={<Bot size={18} className="text-emerald-500" />}
             iconBg="rgba(16,185,129,0.1)"
             label={t("settings_sim")}
@@ -526,140 +459,6 @@ export function SettingsScreen() {
               {language === lang && <Check size={16} />}
             </button>
           ))}
-        </div>
-      </BottomSheet>
-
-      <BottomSheet
-        open={showSmsPasteSheet}
-        onClose={() => { if (!isParsingSms) setShowSmsPasteSheet(false); }}
-        isDark={isDark}
-        title="Smart SMS Parser"
-        subtitle="Paste bank alert text"
-      >
-        <div className="px-5 pb-10">
-          {!extractedSms ? (
-            <div className="space-y-4">
-              <div className={cn(
-                "rounded-2xl border p-4",
-                isDark ? "bg-slate-900 border-white/10" : "bg-slate-50 border-slate-200"
-              )}>
-                <textarea
-                  value={pastedText}
-                  onChange={(e) => setPastedText(e.target.value)}
-                  placeholder="Paste bank notification here... e.g. 'Your account XX1234 has been debited for LKR 500.00 at Starbucks...'"
-                  className="w-full h-32 bg-transparent text-sm resize-none focus:outline-none"
-                />
-              </div>
-              
-              {smsError && (
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2">
-                  <AlertTriangle size={14} className="text-rose-500 mt-0.5" />
-                  <p className="text-[11px] text-rose-500 font-medium">{smsError}</p>
-                </div>
-              )}
-
-              <button
-                onClick={handleParseSms}
-                disabled={!pastedText.trim() || isParsingSms}
-                className={cn(
-                  "w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
-                  pastedText.trim() && !isParsingSms
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                    : "bg-slate-200 dark:bg-slate-800 text-slate-400"
-                )}
-              >
-                {isParsingSms ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                    />
-                    Analyzing with AI...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={16} />
-                    Extract Transaction
-                  </>
-                )}
-              </button>
-              
-              <div className="flex items-center gap-2 mt-4 px-2">
-                 <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
-                    <Shield size={14} className="text-amber-500" />
-                 </div>
-                 <p className="text-[10px] text-slate-500 leading-tight">
-                    Your data is processed securely via encrypted AI channels and is never stored permanently.
-                 </p>
-              </div>
-            </div>
-          ) : (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="space-y-4"
-            >
-              <div className={cn(
-                "p-5 rounded-3xl border",
-                isDark ? "bg-slate-900 border-white/10" : "bg-white border-slate-100 shadow-sm"
-              )}>
-                <div className="flex items-center gap-4 mb-5">
-                   <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 flex items-center justify-center text-2xl">
-                      {extractedSms.type === 'income' ? '💰' : '💳'}
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Detected Transaction</p>
-                      <h4 className={cn("text-lg font-black", isDark ? "text-white" : "text-slate-900")}>
-                        {extractedSms.merchant}
-                      </h4>
-                   </div>
-                </div>
-
-                <div className="space-y-3">
-                   <div className="flex items-center justify-between py-2 border-b border-dashed border-slate-200 dark:border-white/5">
-                      <span className="text-xs text-slate-500 font-medium">Amount</span>
-                      <span className={cn("text-lg font-black", extractedSms.type === 'income' ? 'text-emerald-500' : 'text-rose-500')}>
-                        {extractedSms.currency} {extractedSms.amount.toLocaleString()}
-                      </span>
-                   </div>
-                   <div className="flex items-center justify-between py-2 border-b border-dashed border-slate-200 dark:border-white/5">
-                      <span className="text-xs text-slate-500 font-medium">Category</span>
-                      <span className={cn("text-xs font-bold px-3 py-1 rounded-full", isDark ? "bg-white/5 text-white" : "bg-slate-100 text-slate-800")}>
-                        {extractedSms.category}
-                      </span>
-                   </div>
-                   <div className="flex items-center justify-between py-2">
-                      <span className="text-xs text-slate-500 font-medium">Confidence</span>
-                      <div className="flex gap-0.5">
-                         {[1, 2, 3, 4, 5].map(s => (
-                           <Star key={s} size={10} fill={s <= 4 ? "#F59E0B" : "none"} className="text-amber-500" />
-                         ))}
-                      </div>
-                   </div>
-                </div>
-                
-                <p className="mt-4 text-[10px] text-slate-500 leading-relaxed italic p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-dashed border-slate-200 dark:border-white/10">
-                   "{extractedSms.description}"
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setExtractedSms(null)}
-                  className="flex-1 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold text-xs uppercase"
-                >
-                  Edit Input
-                </button>
-                <button
-                  onClick={handleSaveSmsTransaction}
-                  className="flex-[1.5] py-4 rounded-2xl bg-emerald-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-600/20"
-                >
-                  Save Transaction
-                </button>
-              </div>
-            </motion.div>
-          )}
         </div>
       </BottomSheet>
     </motion.div>
