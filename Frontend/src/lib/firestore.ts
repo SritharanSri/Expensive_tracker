@@ -117,6 +117,8 @@ export async function updateTransaction(
   if (updates.date) {
     data.date = Timestamp.fromDate(updates.date instanceof Date ? updates.date : new Date(updates.date));
   }
+  // Firestore does not like undefined values, clean them up
+  Object.keys(data).forEach(k => data[k] === undefined && delete data[k]);
   await updateDoc(doc(txCol(uid), txId), data);
 }
 
