@@ -274,6 +274,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
+  const sortTransactions = useCallback((txs: Transaction[]) => {
+    return [...txs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, []);
+
   const updateProfile = useCallback((data: Partial<Omit<UserProfile, "id" | "joinedDate">>) => {
     setUser(prev => {
       if (!prev) return prev;
@@ -508,7 +512,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTransaction = useCallback((tx: Omit<Transaction, "id">) => {
     const tempId = Math.random().toString(36).substr(2, 9);
     const newTx = { ...tx, id: tempId };
-    setTransactions((prev) => [newTx, ...prev]);
+    setTransactions((prev) => sortTransactions([newTx, ...prev]));
 
     if (tx.type === "expense") {
       addNotification({
@@ -530,7 +534,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
       );
 
-      // Budget threshold notifications (fire only when threshold is first crossed)
+      // Budget threshold notifications
       budgets.forEach(b => {
         if (b.category.toLowerCase() === tx.category.toLowerCase()) {
           const newSpent = b.spent + tx.amount;
@@ -563,43 +567,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user, budgets, addNotification]);
 
   const updateTransaction = useCallback((id: string, updates: Partial<Transaction>) => {
-    const oldTx = transactions.find(t => t.id === id);
-    if (!oldTx) return;
+    let oldTx: Transaction | undefined;
+    
+    setTransactions(prev => {
+      oldTx = prev.find(t => t.id === id);
+      if (!oldTx) {
+        console.error("Transaction not found for update:", id);
+        return prev;
+      }
 
-    const updatedTx = { ...oldTx, ...updates } as Transaction;
-    setTransactions(prev => prev.map(t => t.id === id ? updatedTx : t));
+      const updatedTx = { ...oldTx, ...updates } as Transaction;
+      const filtered = prev.filter(t => t.id !== id);
+      return sortTransactions([updatedTx, ...filtered]);
+    });
 
-    // Update budgets if amount or category or type changed
-    const typeChanged = updates.type && updates.type !== oldTx.type;
-    const amountChanged = updates.amount !== undefined && updates.amount !== oldTx.amount;
-    const categoryChanged = updates.category !== undefined && updates.category !== oldTx.category;
+    // Handle budgets and firestore AFTER the transaction state has been triggered for update
+    // We use a small timeout to ensure we are working with the correct oldTx and updates
+    setTimeout(() => {
+      if (!oldTx) return;
+      const updatedTx = { ...oldTx, ...updates } as Transaction;
 
-    if (typeChanged || amountChanged || categoryChanged) {
-      setBudgets(prev => prev.map(b => {
-        let newSpent = b.spent;
-        
-        // Handle old transaction removal from budget
-        if (oldTx.type === "expense" && b.category.toLowerCase() === oldTx.category.toLowerCase()) {
-          newSpent -= oldTx.amount;
-        }
+      const typeChanged = updates.type && updates.type !== oldTx.type;
+      const amountChanged = updates.amount !== undefined && updates.amount !== oldTx.amount;
+      const categoryChanged = updates.category !== undefined && updates.category !== oldTx.category;
 
-        // Handle new transaction addition to budget
-        if (updatedTx.type === "expense" && b.category.toLowerCase() === updatedTx.category.toLowerCase()) {
-          newSpent += updatedTx.amount;
-        }
+      if (typeChanged || amountChanged || categoryChanged) {
+        setBudgets(prevBuds => prevBuds.map(b => {
+          let newSpent = b.spent;
+          
+          // Remove old if it was an expense
+          if (oldTx!.type === "expense" && b.category.toLowerCase() === oldTx!.category.toLowerCase()) {
+            newSpent -= oldTx!.amount;
+          }
+          // Add new if it is an expense
+          if (updatedTx.type === "expense" && b.category.toLowerCase() === updatedTx.category.toLowerCase()) {
+            newSpent += updatedTx.amount;
+          }
 
-        if (newSpent !== b.spent) {
-          if (user) updateBudgetSpent(user.id, b.id, newSpent).catch(console.error);
-          return { ...b, spent: newSpent };
-        }
-        return b;
-      }));
-    }
+          if (Math.abs(newSpent - b.spent) > 0.001) {
+            if (user) updateBudgetSpent(user.id, b.id, newSpent).catch(console.error);
+            return { ...b, spent: newSpent };
+          }
+          return b;
+        }));
+      }
 
-    if (user) {
-      updateTxFirestore(user.id, id, updates).catch(console.error);
-    }
-  }, [user, transactions]);
+      if (user) {
+        updateTxFirestore(user.id, id, updates).catch(console.error);
+      }
+    }, 0);
+  }, [user, sortTransactions]);
 
   const removeTx = useCallback((id: string) => {
     const txToRemove = transactions.find(t => t.id === id);

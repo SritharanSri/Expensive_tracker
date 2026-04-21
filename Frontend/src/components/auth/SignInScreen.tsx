@@ -35,7 +35,7 @@ export function SignInScreen() {
 
   function fillDemo() {
     setEmail("demo@spendly.app");
-    setPassword("demo123");
+    setPassword("demo");
     setError("");
   }
 

@@ -48,14 +48,13 @@ export function AddExpense() {
   const [amount, setAmount] = useState(editingTransaction?.amount.toString() || "0");
   const [selectedCatId, setSelectedCatId] = useState<string>(editingTransaction?.category || "");
   const [linkedSourceId, setLinkedSourceId] = useState<string>(editingTransaction?.linkedIncomeCategoryId || "");
-  const [note, setNote] = useState(editingTransaction?.note || "");
+  const [note, setNote] = useState(editingTransaction?.note || editingTransaction?.title || "");
   const [selectedDate, setSelectedDate] = useState<Date>(editingTransaction?.date || new Date());
   const [isSaving, setIsSaving] = useState(false);
   const [showCatPicker, setShowCatPicker] = useState(false);
   
   const dateInputRef = useRef<HTMLInputElement>(null);
 
-  // Voice State
   const [isListening, setIsListening] = useState(false);
   const [voiceText, setVoiceText] = useState("");
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
@@ -170,7 +169,7 @@ export function AddExpense() {
   }
 
   function handleSubmit() {
-    if (parseFloat(amount) <= 0) return;
+    if (isSaving || parseFloat(amount) <= 0) return;
     
     setIsSaving(true);
     
@@ -180,7 +179,8 @@ export function AddExpense() {
       category: selectedCatId || (txType === "income" ? "salary" : "other"),
       type: txType,
       linkedIncomeCategoryId: (txType === "expense") ? linkedSourceId : undefined,
-      date: selectedDate
+      date: selectedDate,
+      note: note
     };
 
     if (editingTransaction) {
