@@ -48,7 +48,7 @@ export function Dashboard() {
     isDark, isPremium, setScreen, balance, currencyConfig, t, language, 
     transactions, budgets, addTransaction, addNotification, triggerPremiumModal, 
     aiToolUsageCount, aiQueryCount, financialGoals, setAddExpenseInitialMode,
-    sheetOpen
+    sheetOpen, setEditingTransaction
   } = useApp();
   const [isMounted, setIsMounted] = useState(false);
   const [today, setToday] = useState("");
@@ -319,6 +319,7 @@ export function Dashboard() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => {
+              setEditingTransaction(null);
               setAddExpenseInitialMode("voice");
               setScreen("add-expense");
             }}

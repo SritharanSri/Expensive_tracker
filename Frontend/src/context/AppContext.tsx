@@ -274,6 +274,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
+  // Use a ref to guarantee fresh transactions for callbacks without triggering excessive dependency re-evaluations
+  const transactionsRef = React.useRef(transactions);
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
+
   const sortTransactions = useCallback((txs: Transaction[]) => {
     return [...txs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, []);
@@ -567,7 +573,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user, budgets, addNotification]);
 
   const updateTransaction = useCallback((id: string, updates: Partial<Transaction>) => {
-    const oldTx = transactions.find(t => t.id === id);
+    // Access latest transactions via ref to prevent stale closures
+    const currentTxs = transactionsRef.current;
+    const oldTx = currentTxs.find(t => t.id === id);
     if (!oldTx) {
       console.error("Transaction not found for update:", id);
       return;
@@ -608,7 +616,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       updateTxFirestore(user.id, id, updates).catch(console.error);
     }
-  }, [user, transactions, sortTransactions]);
+  }, [user, sortTransactions]);
 
   const removeTx = useCallback((id: string) => {
     const txToRemove = transactions.find(t => t.id === id);
