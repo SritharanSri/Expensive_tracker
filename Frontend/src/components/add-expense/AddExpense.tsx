@@ -55,6 +55,18 @@ export function AddExpense() {
   
   const dateInputRef = useRef<HTMLInputElement>(null);
 
+  // Robustly sync editingTransaction downstream if it populates late
+  useEffect(() => {
+    if (editingTransaction) {
+      setTxType(editingTransaction.type);
+      setAmount(editingTransaction.amount.toString());
+      setSelectedCatId(editingTransaction.category);
+      setLinkedSourceId(editingTransaction.linkedIncomeCategoryId || "");
+      setNote(editingTransaction.note || editingTransaction.title || "");
+      setSelectedDate(editingTransaction.date ? (editingTransaction.date instanceof Date ? editingTransaction.date : new Date(editingTransaction.date)) : new Date());
+    }
+  }, [editingTransaction]);
+
   const [isListening, setIsListening] = useState(false);
   const [voiceText, setVoiceText] = useState("");
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
