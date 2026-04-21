@@ -36,17 +36,7 @@ export function AppShell() {
     prevIndexRef.current = currentIndex;
   }, [currentIndex]);
 
-  const handleSwipe = (offset: number) => {
-    if (currentIndex === -1) return;
 
-    if (offset < -100 && currentIndex < SWIPE_SCREENS.length - 1) {
-      // Swipe Left -> Next
-      setScreen(SWIPE_SCREENS[currentIndex + 1]);
-    } else if (offset > 100 && currentIndex > 0) {
-      // Swipe Right -> Previous
-      setScreen(SWIPE_SCREENS[currentIndex - 1]);
-    }
-  };
 
   const variants = {
     enter: (direction: number) => ({
@@ -82,10 +72,7 @@ export function AppShell() {
             x: { type: "spring", stiffness: 300, damping: 30 },
             opacity: { duration: 0.2 }
           }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.05}
-          onDragEnd={(_, info) => handleSwipe(info.offset.x)}
+
           className="absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden no-scrollbar"
         >
           {currentScreen === "signin" && <SignInScreen />}
