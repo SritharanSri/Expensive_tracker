@@ -150,12 +150,8 @@ export function AddExpense() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addExpenseInitialMode]);
 
-  // Clean up editing state on unmount
-  useEffect(() => {
-    return () => {
-      setEditingTransaction(null);
-    };
-  }, [setEditingTransaction]);
+  // Clean up editing state on unmount is removed because it causes issues in React Strict Mode.
+  // Instead, the state is cleared on specific navigation actions and after successful submits.
 
   function handleNumpad(key: string) {
     if (key === "⌫") {
@@ -192,6 +188,7 @@ export function AddExpense() {
     // Redirect after animation
     setTimeout(() => {
       setIsSaving(false);
+      setEditingTransaction(null);
       setScreen("dashboard");
     }, 1500);
   }

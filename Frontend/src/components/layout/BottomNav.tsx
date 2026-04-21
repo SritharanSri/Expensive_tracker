@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { LayoutDashboard, PlusCircle, Target, BarChart2, Crosshair } from "lucide-react";
 
 export function BottomNav() {
-  const { currentScreen, setScreen, isDark, sheetOpen, t } = useApp();
+  const { currentScreen, setScreen, isDark, sheetOpen, t, setEditingTransaction } = useApp();
 
   const NAV_ITEMS = [
     { id: "dashboard"   as const, label: t("nav_dashboard"), icon: LayoutDashboard, isCTA: false },
@@ -44,7 +44,10 @@ export function BottomNav() {
             return (
               <div key={item.id} className="relative flex flex-col items-center flex-1 h-full justify-center">
                 <motion.button
-                  onClick={() => setScreen(item.id)}
+                  onClick={() => {
+                    if (item.id === "add-expense") setEditingTransaction(null);
+                    setScreen(item.id);
+                  }}
                   whileTap={{ scale: 0.9 }}
                   className="absolute -top-7 flex items-center justify-center w-14 h-14 rounded-full text-white shadow-lg"
                   style={{
@@ -61,7 +64,10 @@ export function BottomNav() {
           return (
             <motion.button
               key={item.id}
-              onClick={() => setScreen(item.id)}
+              onClick={() => {
+                if (item.id === "add-expense") setEditingTransaction(null);
+                setScreen(item.id);
+              }}
               whileTap={{ scale: 0.9 }}
               className="flex flex-col items-center justify-center flex-1 h-full gap-1 relative"
             >
