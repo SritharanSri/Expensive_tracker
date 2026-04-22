@@ -36,8 +36,21 @@ export interface Transaction {
   category: string; // Category ID
   date: Date;
   type: TransactionType;
-  linkedIncomeCategoryId?: string; // ID of the income category that funded this
+  /** @deprecated Use linked_income_id instead (links to a specific income Transaction.id) */
+  linkedIncomeCategoryId?: string;
+  /** Links to the ID of a specific income Transaction that funds this expense */
+  linked_income_id?: string;
   note?: string;
+}
+
+/** A computed view of an income transaction with its remaining (unspent) balance */
+export interface IncomeSource {
+  id: string;        // income transaction ID
+  title: string;     // e.g. "Monthly Salary"
+  amount: number;    // original income amount
+  remaining: number; // amount minus sum of linked expenses
+  date: Date;
+  category: string;  // income category id (for icon/color)
 }
 
 export interface Category {
@@ -117,6 +130,7 @@ export interface AppContextType {
 
   // Financial Data
   balance: number;
+  incomeSourcesWithBalance: IncomeSource[];
   transactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, "id">) => void;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
@@ -463,6 +477,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const balance = useMemo(() => {
     return transactions.reduce((acc, tx) => (tx.type === "income") ? acc + tx.amount : acc - tx.amount, 0);
+  }, [transactions]);
+
+  /**
+   * Computed list of income transactions enriched with their remaining (unspent) balance.
+   * Remaining = income.amount − sum of expenses whose linked_income_id === income.id
+   * This is a pure calculated field — no stored remaining_amount needed.
+   * Automatically stays accurate on any transaction add/update/delete.
+   */
+  const incomeSourcesWithBalance = useMemo<IncomeSource[]>(() => {
+    const incomes = transactions.filter(t => t.type === "income");
+    return incomes
+      .map(income => {
+        const spent = transactions
+          .filter(t => t.type === "expense" && t.linked_income_id === income.id)
+          .reduce((sum, t) => sum + t.amount, 0);
+        return {
+          id: income.id,
+          title: income.title,
+          amount: income.amount,
+          remaining: income.amount - spent,
+          date: income.date,
+          category: income.category,
+        };
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [transactions]);
 
 
@@ -949,6 +988,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         currencyConfig,
         t,
         balance,
+        incomeSourcesWithBalance,
         transactions,
         addTransaction,
         updateTransaction,

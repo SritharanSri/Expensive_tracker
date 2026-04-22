@@ -9,6 +9,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { GlassCard } from "@/components/ui/Cards";
 import { BillScanner } from "./BillScanner";
 import { TranslationKey } from "@/lib/translations";
+import { IncomeSourcePicker } from "@/components/ui/IncomeSourcePicker";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -47,7 +48,8 @@ export function AddExpense() {
   const [txType, setTxType] = useState<TxType>(editingTransaction?.type || "expense");
   const [amount, setAmount] = useState(editingTransaction?.amount.toString() || "0");
   const [selectedCatId, setSelectedCatId] = useState<string>(editingTransaction?.category || "");
-  const [linkedSourceId, setLinkedSourceId] = useState<string>(editingTransaction?.linkedIncomeCategoryId || "");
+  // linkedSourceId now holds the ID of a specific income Transaction (not a category ID)
+  const [linkedSourceId, setLinkedSourceId] = useState<string>(editingTransaction?.linked_income_id || "");
   const [note, setNote] = useState(editingTransaction?.note || editingTransaction?.title || "");
   const [selectedDate, setSelectedDate] = useState<Date>(editingTransaction?.date || new Date());
   const [isSaving, setIsSaving] = useState(false);
@@ -61,7 +63,7 @@ export function AddExpense() {
       setTxType(editingTransaction.type);
       setAmount(editingTransaction.amount.toString());
       setSelectedCatId(editingTransaction.category);
-      setLinkedSourceId(editingTransaction.linkedIncomeCategoryId || "");
+      setLinkedSourceId(editingTransaction.linked_income_id || "");
       setNote(editingTransaction.note || editingTransaction.title || "");
       setSelectedDate(editingTransaction.date ? (editingTransaction.date instanceof Date ? editingTransaction.date : new Date(editingTransaction.date)) : new Date());
     }
@@ -186,7 +188,9 @@ export function AddExpense() {
       amount: parseFloat(amount),
       category: selectedCatId || (txType === "income" ? "salary" : "other"),
       type: txType,
-      linkedIncomeCategoryId: (txType === "expense") ? linkedSourceId : undefined,
+      // Use new linked_income_id field (transaction-level link); clear for income entries
+      linked_income_id: (txType === "expense") ? (linkedSourceId || undefined) : undefined,
+      linkedIncomeCategoryId: undefined,
       date: selectedDate,
       note: note
     };
@@ -471,14 +475,14 @@ export function AddExpense() {
           {(txType === "expense" || txType === "investment") && (
             <div className="p-2 pb-4">
               <label className={cn("text-[10px] font-black uppercase tracking-widest ml-2 mb-2 block", isDark ? "text-indigo-400/80" : "text-indigo-600/80")}>
-                Which income source funds this?
+                Which income funds this?
                 <span className="ml-1 opacity-50 font-medium normal-case">(Optional)</span>
               </label>
-              <CategorySelector
-                type="income"
+              <IncomeSourcePicker
                 selectedId={linkedSourceId}
                 onSelect={setLinkedSourceId}
                 isDark={isDark}
+                expenseAmount={parseFloat(amount) || 0}
               />
             </div>
           )}

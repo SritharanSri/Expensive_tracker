@@ -79,6 +79,7 @@ export async function fetchTransactions(uid: string): Promise<Transaction[]> {
         category: data.category,
         type: data.type,
         linkedIncomeCategoryId: data.linkedIncomeCategoryId ?? undefined,
+        linked_income_id: data.linked_income_id ?? undefined,
         date: data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date),
         note: data.note ?? undefined,
       } as Transaction;
@@ -98,6 +99,7 @@ export async function saveTransaction(
     category: tx.category,
     type: tx.type,
     linkedIncomeCategoryId: tx.linkedIncomeCategoryId ?? null,
+    linked_income_id: tx.linked_income_id ?? null,
     date: Timestamp.fromDate(tx.date instanceof Date ? tx.date : new Date(tx.date)),
     note: tx.note ?? null,
   });
