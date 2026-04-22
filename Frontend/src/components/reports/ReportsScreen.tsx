@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 
 export function ReportsScreen() {
-  const { isDark, isPremium, currencyConfig, t, transactions, categories, incomeSourcesWithBalance } = useApp();
+  const { isDark, isPremium, currencyConfig, t, transactions, categories } = useApp();
   const [period, setPeriod] = useState<"1M" | "3M" | "6M">("3M");
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
 
@@ -397,119 +397,82 @@ export function ReportsScreen() {
         </div>
       </div>
 
-      {/* Income Breakdown Section */}
+      {/* Source Efficiency */}
       <div className="mx-5 mb-10">
         <div className="flex items-center justify-between mb-4 px-2">
-          <div>
-            <h3 className={cn("font-black text-xs uppercase tracking-widest", isDark ? "text-slate-400" : "text-slate-500")}>
-              Income Breakdown
-            </h3>
-            <p className="text-[10px] text-slate-500 font-bold mt-0.5">Per-source usage &amp; remaining balance</p>
-          </div>
+          <h3 className={cn("font-black text-xs uppercase tracking-widest", isDark ? "text-slate-400" : "text-slate-500")}>Source Utilization</h3>
           <ArrowUpRight size={14} className="text-slate-500" />
         </div>
-
+        
         <div className="space-y-4">
+          {/* Group and filter sources with activity */}
           {(() => {
-            // Filter income sources to those whose income transaction falls within the selected period
-            const now = new Date();
-            const cutoff = new Date(now.getFullYear(), now.getMonth() - monthCount + 1, 1);
-            const periodSources = incomeSourcesWithBalance.filter(
-              s => new Date(s.date) >= cutoff
-            );
-
-            if (periodSources.length === 0) {
-              return (
-                <div className="text-center py-16 opacity-30">
-                  <div className="mb-2 text-3xl">📊</div>
-                  <p className="text-xs font-bold">No income sources in this period</p>
-                  <p className="text-[10px] text-slate-500 mt-1">Add income entries to see breakdowns</p>
-                </div>
-              );
-            }
-
-            return periodSources.map((source) => {
-              const cat = categories.find(c => c.id === source.category);
-              const usedAmount = source.amount - source.remaining;
-              const usedPct = source.amount > 0 ? Math.min(Math.round((usedAmount / source.amount) * 100), 100) : 0;
-              const isOverspent = source.remaining < 0;
-              const barColor = isOverspent ? "#EF4444" : usedPct > 85 ? "#F59E0B" : usedPct > 50 ? "#6366F1" : "#10B981";
-              const statusLabel = isOverspent ? "Overspent" : usedPct > 85 ? "Critical" : usedPct > 50 ? "Moderate" : "Healthy";
-              const statusCls = isOverspent ? "text-rose-500" : usedPct > 85 ? "text-amber-500" : "text-emerald-500";
-
-              return (
-                <motion.div
-                  key={source.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <GlassCard isDark={isDark} className="p-5 overflow-hidden relative">
-                    {/* Background icon watermark */}
-                    <div className="absolute top-0 right-0 p-4 opacity-[0.035] scale-150 rotate-12 pointer-events-none select-none">
-                      <span className="text-6xl">{cat?.icon ?? "💰"}</span>
-                    </div>
-
-                    {/* Header row */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shadow-lg"
-                          style={{ background: `${cat?.color ?? "#10B981"}18`, color: cat?.color ?? "#10B981" }}
-                        >
-                          {cat?.icon ?? "💰"}
-                        </div>
-                        <div>
-                          <p className={cn("text-sm font-black", isDark ? "text-white" : "text-slate-900")}>{source.title}</p>
-                          <p className="text-[10px] text-slate-500 font-medium">
-                            {new Date(source.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                            &nbsp;·&nbsp;{cat?.name ?? source.category}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={cn("text-xs font-black uppercase tracking-wider", statusCls)}>{statusLabel}</p>
-                        <p className={cn("text-[10px] font-bold", statusCls)}>{usedPct}% used</p>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className={cn("w-full h-2 rounded-full overflow-hidden mb-4", isDark ? "bg-white/5" : "bg-slate-100")}>
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(usedPct, 100)}%` }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: barColor }}
-                      />
-                    </div>
-
-                    {/* Three-column amount row */}
-                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/[0.05]">
-                      <div className="text-center">
-                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">Original</p>
-                        <p className={cn("text-xs font-black", isDark ? "text-white" : "text-slate-900")}>
-                          {formatCurrency(source.amount, currencyConfig)}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">Used</p>
-                        <p className="text-xs font-black text-rose-500">
-                          {formatCurrency(usedAmount < 0 ? 0 : usedAmount, currencyConfig)}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">Remaining</p>
-                        <p className={cn("text-xs font-black", source.remaining < 0 ? "text-rose-500" : "text-emerald-500")}>
-                          {formatCurrency(Math.abs(source.remaining), currencyConfig)}
-                          {source.remaining < 0 && " over"}
-                        </p>
-                      </div>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              );
+            const sources: Record<string, { id: string; name: string; color: string; total: number; spent: number; icon: string }> = {};
+            categories.filter(c => c.type === "income").forEach(c => {
+              sources[c.id] = { id: c.id, name: c.name, color: c.color, total: 0, spent: 0, icon: c.icon };
             });
+            periodTransactions.forEach(tx => {
+              if (tx.type === "income" && sources[tx.category]) sources[tx.category].total += tx.amount;
+              if (tx.type === "expense" && tx.linkedIncomeCategoryId && sources[tx.linkedIncomeCategoryId]) {
+                sources[tx.linkedIncomeCategoryId].spent += tx.amount;
+              }
+            });
+            
+            const activeSources = Object.values(sources).filter(s => s.total > 0 || s.spent > 0);
+            
+            return activeSources.length > 0 ? activeSources.map((source) => {
+              const percent = source.total > 0 ? Math.min(Math.round((source.spent / source.total) * 100), 100) : 0;
+              return (
+                <GlassCard key={source.id} isDark={isDark} className="p-5 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 p-4 opacity-[0.03] scale-150 rotate-12 pointer-events-none">
+                    <span className="text-6xl">{source.icon}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg" style={{ background: `${source.color}15`, color: source.color }}>
+                        {source.icon}
+                      </div>
+                      <div>
+                        <p className={cn("text-sm font-black", isDark ? "text-white" : "text-slate-900")}>{source.name}</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{formatCurrency(source.total, currencyConfig)} Received</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-xs font-black", percent > 85 ? "text-rose-500" : percent > 50 ? "text-amber-500" : "text-emerald-500")}>
+                        {percent}% Used
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className={cn("w-full h-2.5 rounded-full overflow-hidden", isDark ? "bg-white/5" : "bg-slate-100")}>
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${percent}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      className="h-full rounded-full shadow-[0_0_12px_rgba(0,0,0,0.1)]"
+                      style={{ backgroundColor: source.color }}
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center mt-5 pt-4 border-t border-white/[0.04]">
+                     <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formatCurrency(source.spent, currencyConfig)} OUT</span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formatCurrency(source.total - source.spent, currencyConfig)} REMAINING</span>
+                     </div>
+                  </div>
+                </GlassCard>
+              );
+            }) : (
+              <div className="text-center py-16 opacity-30">
+                <div className="mb-2">📉</div>
+                <p className="text-xs font-bold">No linked sources active in this period</p>
+              </div>
+            );
           })()}
         </div>
       </div>
