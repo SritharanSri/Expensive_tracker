@@ -8,10 +8,9 @@ import { ProgressBar } from "@/components/ui/Progress";
 import { getProgressPercent } from "@/lib/utils";
 import { useApp } from "@/context/AppContext";
 import { PieChart } from "lucide-react";
-import { CATEGORIES } from "@/lib/data";
 
 export function BudgetSummary({ isDark }: { isDark: boolean }) {
-  const { currencyConfig, budgets, setScreen } = useApp();
+  const { currencyConfig, budgets, setScreen, categories } = useApp();
 
   const currentMonth = new Date().toLocaleString("en-US", { month: "long" });
 
@@ -69,7 +68,7 @@ export function BudgetSummary({ isDark }: { isDark: boolean }) {
                       "text-sm font-medium",
                       isDark ? "text-slate-300" : "text-slate-700"
                     )}>
-                      {CATEGORIES.find(c => c.id === budget.category)?.name ?? budget.category}
+                      {categories.find(c => c.id === budget.category)?.name ?? budget.category}
                     </span>
                     {exceeded && (
                       <span className="text-[10px] font-semibold text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-1.5 py-0.5 rounded-full">

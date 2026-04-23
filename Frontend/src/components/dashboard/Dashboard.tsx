@@ -11,33 +11,6 @@ import { cn, formatCompact } from "@/lib/utils";
 import { useApp } from "@/context/AppContext";
 import { CircularRing } from "@/components/ui/Progress";
 
-const QUICK_STATS = [
-  {
-    label: "Savings Rate",
-    value: 46,
-    gradient: ["#10B981", "#34D399"] as [string, string],
-    display: "46%",
-    sub: "this month",
-    id: "savings-qs",
-  },
-  {
-    label: "Budget Used",
-    value: 71,
-    gradient: ["#F59E0B", "#FBBF24"] as [string, string],
-    display: "71%",
-    sub: "of total",
-    id: "budget-qs",
-  },
-  {
-    label: "Net Worth",
-    value: 82,
-    gradient: ["#4F46E5", "#6366F1"] as [string, string],
-    display: "+8.2%",
-    sub: "growth",
-    id: "net-qs",
-  },
-];
-
 import { Sparkles, ArrowRight, BrainCircuit, TrendingDown, Plus, Mic, Crown, Lock, ScanLine, MessageSquare, Target } from "lucide-react";
 import { GlassCard } from "@/components/ui/Cards";
 import { formatCurrency } from "@/lib/currency";
@@ -124,8 +97,8 @@ export function Dashboard() {
               </h4>
               <p className={cn("text-sm font-semibold leading-tight", isDark ? "text-white" : "text-slate-800")}>
                 {!isMounted ? "..." : isPremium 
-                  ? `At your current rate, you'll save ${currencyConfig.symbol}${formatCompact(12400)} more than last month. Keep it up!` 
-                  : `You've spent more on Food this week. Try to save ${currencyConfig.symbol}500 more!`}
+                  ? `At your current rate, you're tracking to save ${currencyConfig.symbol}${formatCompact(budgetLeft)} this month. Keep it up!` 
+                  : `You've spent the most on ${topCatName}. Keep an eye on your budget!`}
               </p>
             </div>
             <button 

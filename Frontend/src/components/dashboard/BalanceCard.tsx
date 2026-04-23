@@ -7,7 +7,7 @@ import { CircularRing } from "@/components/ui/Progress";
 import { formatCurrency } from "@/lib/currency";
 import { TrendingUp, TrendingDown, Eye, EyeOff, Crown } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-
+import { cn } from "@/lib/utils";
 export function BalanceCard({ isDark }: { isDark: boolean }) {
   const { balance, currencyConfig, isPremium, transactions, t } = useApp();
   const [hidden, setHidden] = useState(false);
@@ -17,15 +17,41 @@ export function BalanceCard({ isDark }: { isDark: boolean }) {
     setIsMounted(true);
   }, []);
   
-  const monthlyIncome = transactions
+  // Filter transactions to current month only
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const thisMonthTxs = transactions.filter(t => {
+    const d = new Date(t.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+
+  const monthlyIncome = thisMonthTxs
     .filter(t => t.type === "income")
     .reduce((acc, t) => acc + t.amount, 0);
     
-  const monthlyExpense = transactions
+  const monthlyExpense = thisMonthTxs
     .filter(t => t.type === "expense")
     .reduce((acc, t) => acc + t.amount, 0);
 
   const spentPercent = monthlyIncome > 0 ? Math.round((monthlyExpense / monthlyIncome) * 100) : 0;
+
+  // Compute real month-over-month savings change
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+  const lastMonthTxs = transactions.filter(t => {
+    const d = new Date(t.date);
+    return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+  });
+  const lastMonthIncome = lastMonthTxs.filter(t => t.type === "income").reduce((a, t) => a + t.amount, 0);
+  const lastMonthExpense = lastMonthTxs.filter(t => t.type === "expense").reduce((a, t) => a + t.amount, 0);
+  const lastMonthSavings = lastMonthIncome - lastMonthExpense;
+  const thisMonthSavings = monthlyIncome - monthlyExpense;
+  const growthPct = lastMonthSavings > 0 
+    ? ((thisMonthSavings - lastMonthSavings) / lastMonthSavings * 100) 
+    : thisMonthSavings > 0 ? 100 : 0;
+  const growthIsPositive = growthPct >= 0;
 
   // Prevent hydration mismatch by returning a placeholder or null until mounted
   if (!isMounted) return <div className="mx-5 h-[180px] rounded-[28px] bg-slate-800 animate-pulse" />;
@@ -60,9 +86,11 @@ export function BalanceCard({ isDark }: { isDark: boolean }) {
               </span>
             </motion.div>
             <div className="flex items-center gap-1.5 mt-2">
-              <div className="flex items-center gap-1 bg-emerald-500/20 px-2 py-0.5 rounded-full">
-                <TrendingUp size={10} className="text-emerald-400" />
-                <span className="text-emerald-400 text-[10px] font-bold">+12.5%</span>
+              <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full", growthIsPositive ? "bg-emerald-500/20" : "bg-rose-500/20")}>
+                {growthIsPositive ? <TrendingUp size={10} className="text-emerald-400" /> : <TrendingDown size={10} className="text-rose-400" />}
+                <span className={cn("text-[10px] font-bold", growthIsPositive ? "text-emerald-400" : "text-rose-400")}>
+                  {growthIsPositive ? "+" : ""}{Math.abs(growthPct).toFixed(1)}%
+                </span>
               </div>
               <span className="text-white/40 text-[10px] font-medium">{t("dash_vs_last_month")}</span>
             </div>

@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { CategorySelector } from "@/components/ui/CategorySelector";
 
-type TxType = "expense" | "income" | "investment";
+type TxType = "expense" | "income";
 type EntryMode = "manual" | "scan" | "voice";
 
 const NUMPAD = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
@@ -468,7 +468,7 @@ export function AddExpense() {
             />
           </div>
 
-          {(txType === "expense" || txType === "investment") && (
+          {txType === "expense" && (
             <div className="p-2 pb-4">
               <label className={cn("text-[10px] font-black uppercase tracking-widest ml-2 mb-2 block", isDark ? "text-indigo-400/80" : "text-indigo-600/80")}>
                 Which income source funds this?
@@ -497,7 +497,10 @@ export function AddExpense() {
               className="absolute inset-0 opacity-0 pointer-events-none"
               value={selectedDate.toISOString().split('T')[0]}
               onChange={(e) => {
-                if (e.target.value) setSelectedDate(new Date(e.target.value));
+                if (e.target.value) {
+                  const [year, month, day] = e.target.value.split('-').map(Number);
+                  setSelectedDate(new Date(year, month - 1, day));
+                }
               }}
             />
             <div className={cn(

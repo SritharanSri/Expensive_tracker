@@ -1,6 +1,6 @@
-export type TransactionType = "income" | "expense";
+type TransactionType = "income" | "expense";
 
-export interface Transaction {
+interface Transaction {
   id: string;
   title: string;
   amount: number;
@@ -18,7 +18,7 @@ export interface Category {
   gradient: string;
 }
 
-export interface Budget {
+interface Budget {
   id: string;
   category: string;
   categoryIcon: string;
@@ -28,7 +28,7 @@ export interface Budget {
   gradient: string;
 }
 
-export interface SavingsGoal {
+interface SavingsGoal {
   id: string;
   title: string;
   targetAmount: number;

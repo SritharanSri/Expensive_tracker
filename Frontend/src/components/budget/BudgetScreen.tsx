@@ -117,7 +117,7 @@ export function BudgetScreen() {
               </div>
               <p className={cn("text-sm font-semibold italic", isDark ? "text-slate-300" : "text-slate-600")}>
                 {isPremium 
-                  ? "You've been spending less on Transport. I suggest moving ₹2,000 to your 'Shopping' budget for better balance." 
+                  ? `You've been spending less on Transport. I suggest moving ${currencyConfig.symbol}2,000 to your 'Shopping' budget for better balance.`
                   : "Tap to unlock AI recommendations and optimize your monthly allocation."}
               </p>
             </div>

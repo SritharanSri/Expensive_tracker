@@ -317,7 +317,7 @@ export function ReportsScreen() {
                   </div>
                   <div className="min-w-0">
                     <p className={cn("text-[10px] font-black truncate", isDark ? "text-white" : "text-slate-900")}>{entry.name}</p>
-                    <p className="text-[9px] font-bold text-slate-500">{Math.round((entry.value / totalExpense) * 100)}%</p>
+                    <p className="text-[9px] font-bold text-slate-500">{totalExpense > 0 ? Math.round((entry.value / totalExpense) * 100) : 0}%</p>
                   </div>
                 </div>
               ))}

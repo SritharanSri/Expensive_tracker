@@ -12,7 +12,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Trophy, Plus, BrainCircuit } from "lucide-react";
 
 export function SavingsScreen() {
-  const { isDark, savingsGoals, addSavingsGoal, isPremium, currencyConfig } = useApp();
+  const { isDark, savingsGoals, addSavingsGoal, isPremium, currencyConfig, triggerPremiumModal } = useApp();
   const [selected, setSelected] = useState<string | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [goalSaved, setGoalSaved] = useState(false);
@@ -147,7 +147,10 @@ export function SavingsScreen() {
                         </div>
 
                         {!isPremium && (
-                          <button className="w-full mt-4 py-2 rounded-xl bg-amber-500 shadow-lg text-amber-950 text-[10px] font-black uppercase tracking-widest">
+                          <button 
+                            onClick={() => triggerPremiumModal("Unlock AI Projections and get unlimited premium features.")}
+                            className="w-full mt-4 py-2 rounded-xl bg-amber-500 shadow-lg text-amber-950 text-[10px] font-black uppercase tracking-widest"
+                          >
                             Upgrade to Unlock AI Projections
                           </button>
                         )}

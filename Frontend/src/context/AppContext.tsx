@@ -27,7 +27,7 @@ export interface UserProfile {
   hiddenCategoryIds?: string[];
 }
 
-export type TransactionType = "income" | "expense" | "investment";
+export type TransactionType = "income" | "expense";
 
 export interface Transaction {
   id: string;
@@ -212,6 +212,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const cachedTxs = localStorage.getItem(`et_txs_${uid}`);
           const cachedBudgets = localStorage.getItem(`et_budgets_${uid}`);
           const cachedGoals = localStorage.getItem(`et_goals_${uid}`);
+          const cachedFGoals = localStorage.getItem(`et_fGoals_${uid}`);
           const cachedNotifs = localStorage.getItem(`et_notifs_${uid}`);
           if (cachedTxs) {
             const parsed = JSON.parse(cachedTxs);
@@ -219,6 +220,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
           if (cachedBudgets) setBudgets(JSON.parse(cachedBudgets));
           if (cachedGoals) setSavingsGoals(JSON.parse(cachedGoals));
+          if (cachedFGoals) setFinancialGoals(JSON.parse(cachedFGoals));
           if (cachedNotifs) {
             const parsed = JSON.parse(cachedNotifs);
             setNotifications(parsed.map((n: Record<string, unknown>) => ({ ...n, time: new Date(n.time as string) })));
@@ -274,11 +276,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  // Use a ref to guarantee fresh transactions for callbacks without triggering excessive dependency re-evaluations
+  // Use refs to guarantee fresh state for callbacks without triggering excessive dependency re-evaluations
   const transactionsRef = React.useRef(transactions);
   useEffect(() => {
     transactionsRef.current = transactions;
   }, [transactions]);
+
+  const budgetsRef = React.useRef(budgets);
+  useEffect(() => {
+    budgetsRef.current = budgets;
+  }, [budgets]);
+
+  const categoriesRef = React.useRef(categories);
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
 
   const sortTransactions = useCallback((txs: Transaction[]) => {
     return [...txs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -528,30 +540,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         color: "#EF4444",
       });
 
-      // Update matching budget spent
+      // Update matching budget spent & check threshold notifications using ref for fresh state
+      const currentBudgets = budgetsRef.current;
+      const currentCategories = categoriesRef.current;
       setBudgets((prev) =>
         prev.map((b) => {
           if (b.category.toLowerCase() === tx.category.toLowerCase()) {
             const newSpent = b.spent + tx.amount;
             if (user) updateBudgetSpent(user.id, b.id, newSpent).catch(console.error);
+
+            // Budget threshold notifications (checked inside updater for correct state)
+            const catName = currentCategories.find(c => c.id === b.category)?.name ?? b.category;
+            if (newSpent > b.limit && b.spent <= b.limit) {
+              addNotification({ title: "Budget Alert", desc: `${catName} budget exceeded!`, icon: "🚨", color: "#EF4444" });
+            } else if (b.limit > 0 && newSpent / b.limit >= 0.8 && b.spent / b.limit < 0.8) {
+              addNotification({ title: "Budget Warning", desc: `${catName} is 80% used`, icon: "⚠️", color: "#F59E0B" });
+            }
+
             return { ...b, spent: newSpent };
           }
           return b;
         })
       );
-
-      // Budget threshold notifications
-      budgets.forEach(b => {
-        if (b.category.toLowerCase() === tx.category.toLowerCase()) {
-          const newSpent = b.spent + tx.amount;
-          const catName = CATEGORIES.find(c => c.id === b.category)?.name ?? b.category;
-          if (newSpent > b.limit && b.spent <= b.limit) {
-            addNotification({ title: "Budget Alert", desc: `${catName} budget exceeded!`, icon: "🚨", color: "#EF4444" });
-          } else if (b.limit > 0 && newSpent / b.limit >= 0.8 && b.spent / b.limit < 0.8) {
-            addNotification({ title: "Budget Warning", desc: `${catName} is 80% used`, icon: "⚠️", color: "#F59E0B" });
-          }
-        }
-      });
     } else {
       addNotification({
         title: "Income Received",
@@ -570,7 +580,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
         .catch(console.error);
     }
-  }, [user, budgets, addNotification]);
+  }, [user, addNotification, sortTransactions]);
 
   const updateTransaction = useCallback((id: string, updates: Partial<Transaction>) => {
     // Access latest transactions via ref to prevent stale closures
@@ -619,7 +629,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user, sortTransactions]);
 
   const removeTx = useCallback((id: string) => {
-    const txToRemove = transactions.find(t => t.id === id);
+    // Use ref for fresh transactions to avoid stale closure
+    const txToRemove = transactionsRef.current.find(t => t.id === id);
     setTransactions(prev => prev.filter(t => t.id !== id));
     
     if (txToRemove && txToRemove.type === "expense") {
@@ -634,7 +645,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (user) removeTransaction(user.id, id).catch(console.error);
-  }, [user, transactions]);
+  }, [user]);
 
   const addBudget = useCallback((budget: Omit<Budget, "id" | "spent">) => {
     const tempId = Math.random().toString(36).substr(2, 9);
@@ -914,6 +925,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(`et_txs_${user.id}`);
       localStorage.removeItem(`et_budgets_${user.id}`);
       localStorage.removeItem(`et_goals_${user.id}`);
+      localStorage.removeItem(`et_fGoals_${user.id}`);
       localStorage.removeItem(`et_notifs_${user.id}`);
     }
     setNotifications([]);
