@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getGoalStatus, getRealExpenses } from "@/lib/utils";
 import { useApp } from "@/context/AppContext";
 import { type FinancialGoal, type GoalStatus } from "@/context/AppContext";
 import { formatCurrency } from "@/lib/currency";
@@ -26,23 +26,22 @@ const TIMELINES = [
 ] as const;
 
 const STATUS_CONFIG: Record<GoalStatus, { label: string; color: string; bg: string; border: string; icon: typeof CheckCircle2; glow: string; grad: [string,string] }> = {
-  on_track:     { label: "On Track",     color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/25", icon: CheckCircle2, glow: "#10B981", grad: ["#10B981","#34D399"] },
-  at_risk:      { label: "At Risk",      color: "text-amber-400",   bg: "bg-amber-400/10",   border: "border-amber-400/25",   icon: AlertTriangle, glow: "#F59E0B", grad: ["#F59E0B","#FBBF24"] },
-  not_feasible: { label: "Not Feasible", color: "text-rose-400",    bg: "bg-rose-400/10",    border: "border-rose-400/25",    icon: XCircle,      glow: "#EF4444", grad: ["#EF4444","#F87171"] },
+  on_track:     { label: "On Track",  color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/25", icon: CheckCircle2, glow: "#10B981", grad: ["#10B981","#34D399"] },
+  at_risk:      { label: "At Risk",   color: "text-amber-400",   bg: "bg-amber-400/10",   border: "border-amber-400/25",   icon: AlertTriangle, glow: "#F59E0B", grad: ["#F59E0B","#FBBF24"] },
+  // Bug 4 fix: "not_feasible" displayed as "Behind" (no schema change)
+  not_feasible: { label: "Behind",    color: "text-rose-400",    bg: "bg-rose-400/10",    border: "border-rose-400/25",    icon: XCircle,      glow: "#EF4444", grad: ["#EF4444","#F87171"] },
   completed:    { label: "Completed 🎉", color: "text-indigo-400",  bg: "bg-indigo-400/10",  border: "border-indigo-400/25",  icon: Trophy,       glow: "#6366F1", grad: ["#6366F1","#818CF8"] },
 };
 
 // ── Utility: compute goal status from live financial data ─────────────────────
-function computeStatus(goal: FinancialGoal, monthlySavings: number): GoalStatus {
+// Bug 4 fix: time-aware status using getGoalStatus() from utils
+function computeStatus(goal: FinancialGoal, _monthlySavings: number): GoalStatus {
   if (goal.currentAmount >= goal.targetAmount) return "completed";
-  const remaining  = goal.targetAmount - goal.currentAmount;
-  const targetDate = new Date(goal.targetDate);
-  const now        = new Date();
-  const monthsLeft = Math.max(0.1, (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-  const required   = remaining / monthsLeft;
-  if (monthlySavings >= required)          return "on_track";
-  if (monthlySavings >= required * 0.7)    return "at_risk";
-  return "not_feasible";
+  const result = getGoalStatus(goal);
+  if (result.text === "On Track") return "on_track";
+  if (result.text === "At Risk") return "at_risk";
+  if (result.text === "Completed") return "completed";
+  return "not_feasible"; // maps to "Behind" in STATUS_CONFIG
 }
 
 function daysToGoal(goal: FinancialGoal, monthlySavings: number): number {
@@ -95,20 +94,41 @@ function CoachBanner({ message, loading, isDark }: { message: string; loading: b
   );
 }
 
-// ── What-If Sheet ─────────────────────────────────────────────────────────────
+// ── What-If Sheet (Feature 1: live simulation) ───────────────────────────────
 function WhatIfSheet({
-  open, onClose, goal, monthlySavings, currencyConfig, isDark,
+  open, onClose, goal, monthlySavings, currencyConfig, isDark, onUpdate,
 }: {
   open: boolean; onClose: () => void;
   goal: FinancialGoal | null;
   monthlySavings: number;
   currencyConfig: { symbol: string; code: string; locale: string };
   isDark: boolean;
+  onUpdate: (id: string, updates: Partial<FinancialGoal>) => void;
 }) {
   const [expRed, setExpRed] = useState("");
   const [incInc, setIncInc] = useState("");
   const [simResult, setSimResult] = useState<{ newMonthsToGoal: number; daysSaved: number; newStatus: GoalStatus; insight: string; recommendation: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  // Live preview (client-side, instant)
+  const livePreview = useMemo(() => {
+    if (!goal) return null;
+    const remaining = goal.targetAmount - goal.currentAmount;
+    const newSavings = monthlySavings + (Number(expRed) || 0) + (Number(incInc) || 0);
+    if (newSavings <= 0 || remaining <= 0) return null;
+    const newMonths = Math.ceil(remaining / newSavings);
+    const currentMonths = monthlySavings > 0 ? Math.ceil(remaining / monthlySavings) : null;
+    const monthsSaved = currentMonths !== null ? currentMonths - newMonths : 0;
+    const projDate = new Date();
+    projDate.setMonth(projDate.getMonth() + newMonths);
+    return { newMonths, monthsSaved, projDate };
+  }, [expRed, incInc, goal, monthlySavings]);
+
+  // SL-specific preset chips computed from monthlySavings as a proxy for food spend
+  const PRESETS = [
+    { label: "✂️ Cut Food 15%", expRed: Math.round(monthlySavings * 0.15), incInc: 0 },
+    { label: "💼 Freelance +5k", expRed: 0, incInc: 5000 },
+    { label: "☕ Skip Coffee", expRed: 1500, incInc: 0 },
+  ];
 
   const simulate = async () => {
     if (!goal) return;
@@ -136,12 +156,28 @@ function WhatIfSheet({
   if (!goal) return null;
 
   return (
-    <BottomSheet open={open} onClose={onClose} isDark={isDark} title="What-If Simulator" subtitle="Test scenarios for your goal" fullHeight>
+    <BottomSheet open={open} onClose={onClose} isDark={isDark} title="What-If Simulator" subtitle="Live scenario preview" fullHeight>
       <div className="px-5 pb-10 space-y-5">
         <div className={cn("p-4 rounded-3xl border", isDark ? "bg-indigo-500/5 border-indigo-500/15" : "bg-indigo-50 border-indigo-100")}>
           <p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Goal</p>
           <p className={cn("text-base font-black", isDark ? "text-white" : "text-slate-900")}>{goal.icon} {goal.name}</p>
           <p className="text-xs text-slate-500 mt-1">Remaining: {formatCurrency(goal.targetAmount - goal.currentAmount, currencyConfig)}</p>
+        </div>
+
+        {/* Feature 1: Preset chips */}
+        <div className="flex gap-2 flex-wrap">
+          {PRESETS.map((p) => (
+            <button
+              key={p.label}
+              onClick={() => { setExpRed(p.expRed > 0 ? String(p.expRed) : ""); setIncInc(p.incInc > 0 ? String(p.incInc) : ""); }}
+              className={cn(
+                "px-3 py-1.5 rounded-2xl border text-[10px] font-black transition-all",
+                isDark ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10" : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
 
         {[
@@ -161,16 +197,57 @@ function WhatIfSheet({
           </div>
         ))}
 
+        {/* Feature 1: Live preview card (instant, no button) */}
+        <AnimatePresence>
+          {livePreview && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className={cn("rounded-3xl border p-5", isDark ? "bg-emerald-500/5 border-emerald-500/20" : "bg-emerald-50 border-emerald-100")}>
+              <p className="text-[10px] font-black uppercase text-emerald-400 mb-3">⚡ Live Preview</p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className={cn("rounded-2xl p-3 text-center", isDark ? "bg-white/5" : "bg-white/80")}>
+                  <Clock size={14} className="mx-auto mb-1 text-indigo-400" />
+                  <p className="text-[9px] font-black uppercase text-slate-500 mb-0.5">New Timeline</p>
+                  <p className={cn("font-black text-base", isDark ? "text-white" : "text-slate-900")}>{livePreview.newMonths} mo</p>
+                  <p className="text-[8px] text-slate-500">
+                    {livePreview.projDate.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                <div className={cn("rounded-2xl p-3 text-center", isDark ? "bg-white/5" : "bg-white/80")}>
+                  <Zap size={14} className="mx-auto mb-1 text-emerald-400" />
+                  <p className="text-[9px] font-black uppercase text-slate-500 mb-0.5">Months Faster</p>
+                  <p className={cn("font-black text-base", livePreview.monthsSaved > 0 ? "text-emerald-500" : "text-rose-400")}>
+                    {livePreview.monthsSaved > 0 ? `−${livePreview.monthsSaved}` : `+${Math.abs(livePreview.monthsSaved)}`} mo
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  if (!goal) return;
+                  const newMonthlyReq = goal.targetAmount > 0
+                    ? (goal.targetAmount - goal.currentAmount) / livePreview.newMonths
+                    : goal.monthlyRequired;
+                  onUpdate(goal.id, { monthlyRequired: newMonthlyReq });
+                  onClose();
+                }}
+                className="w-full py-3 rounded-2xl bg-emerald-600 text-white text-xs font-black flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 size={14} /> Apply to Goal
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <motion.button whileTap={{ scale: 0.97 }} onClick={simulate} disabled={loading}
           className="w-full py-4 rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30">
-          {loading ? <><RefreshCw size={16} className="animate-spin" />Simulating...</> : <><Zap size={16} />Run Simulation</>}
+          {loading ? <><RefreshCw size={16} className="animate-spin" />Analyzing with AI...</> : <><Zap size={16} />Get AI Insight</>}
         </motion.button>
 
         <AnimatePresence>
           {simResult && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className={cn("rounded-3xl border p-5", isDark ? "bg-slate-900/60 border-white/[0.08]" : "bg-white border-slate-100 shadow-sm")}>
-              <p className="text-[10px] font-black uppercase text-slate-500 mb-4">📊 Simulation Results</p>
+              <p className="text-[10px] font-black uppercase text-slate-500 mb-4">📊 AI Analysis</p>
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {[
                   { label: "New Timeline",  value: `${simResult.newMonthsToGoal} months`, icon: Clock },
@@ -195,6 +272,7 @@ function WhatIfSheet({
     </BottomSheet>
   );
 }
+
 
 // ── New Goal Sheet ─────────────────────────────────────────────────────────────
 function GoalFormSheet({
@@ -458,20 +536,31 @@ function GoalCard({
               <div className="px-4 pb-4 space-y-3">
                 <div className={cn("h-px", isDark ? "bg-white/5" : "bg-slate-100")} />
 
-                {/* Key stats */}
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: "Save/Mo", value: formatCurrency(req, currencyConfig), icon: DollarSign, color: "text-indigo-400" },
-                    { label: "Days Left", value: days > 0 ? `${days}d` : "Done!", icon: Clock, color: "text-amber-400" },
-                    { label: "Progress", value: `${pct}%`, icon: BarChart3, color: cfg.color },
-                  ].map(({ label, value, icon: Icon, color }) => (
-                    <div key={label} className={cn("rounded-2xl p-2.5 text-center", isDark ? "bg-white/5" : "bg-slate-50")}>
-                      <Icon size={12} className={cn("mx-auto mb-1", color)} />
-                      <p className="text-[9px] font-black uppercase text-slate-500 mb-0.5">{label}</p>
-                      <p className={cn("font-black text-xs", isDark ? "text-white" : "text-slate-900")}>{value}</p>
+                {/* Key stats — Bug 4 fix: show actual% vs expected% */}
+                {(() => {
+                  const now = new Date();
+                  const target = new Date(goal.targetDate);
+                  const start = goal.createdAt ? new Date(goal.createdAt) : new Date(target.getTime() - 30 * 24 * 60 * 60 * 1000);
+                  const totalMs = target.getTime() - start.getTime();
+                  const elapsedMs = now.getTime() - start.getTime();
+                  const expectedPct = totalMs > 0 ? Math.min(100, Math.round((elapsedMs / totalMs) * 100)) : 0;
+                  return (
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: "Save/Mo", value: formatCurrency(req, currencyConfig), icon: DollarSign, color: "text-indigo-400" },
+                        { label: "Days Left", value: days > 0 ? `${days}d` : "Done!", icon: Clock, color: "text-amber-400" },
+                        { label: "Progress", value: `${pct}%`, sub: `Exp ${expectedPct}%`, icon: BarChart3, color: cfg.color },
+                      ].map(({ label, value, sub, icon: Icon, color }) => (
+                        <div key={label} className={cn("rounded-2xl p-2.5 text-center", isDark ? "bg-white/5" : "bg-slate-50")}>
+                          <Icon size={12} className={cn("mx-auto mb-1", color)} />
+                          <p className="text-[9px] font-black uppercase text-slate-500 mb-0.5">{label}</p>
+                          <p className={cn("font-black text-xs", isDark ? "text-white" : "text-slate-900")}>{value}</p>
+                          {sub && <p className="text-[8px] text-slate-500 font-bold mt-0.5">{sub}</p>}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
 
                 {/* AI Insight */}
                 {goal.aiInsight && (
@@ -617,7 +706,8 @@ export function SmartGoalsScreen() {
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
     const monthlyIncome   = thisMonth.filter(t => t.type === "income").reduce((a, b) => a + b.amount, 0);
-    const monthlyExpenses = thisMonth.filter(t => t.type === "expense").reduce((a, b) => a + b.amount, 0);
+    // Bug 2/7 fix: use real expenses only (excludes goal contributions) for accurate savings
+    const monthlyExpenses = getRealExpenses(thisMonth).reduce((a, b) => a + b.amount, 0);
     const balance         = transactions.reduce((a, t) => t.type === "income" ? a + t.amount : a - t.amount, 0);
     return { balance, monthlyIncome, monthlyExpenses, monthlySavings: monthlyIncome - monthlyExpenses };
   }, [transactions]);
@@ -668,7 +758,8 @@ export function SmartGoalsScreen() {
   // ── Premium gate: max 2 goals for free ───────
   const canAddGoal = isPremium || financialGoals.length < 2;
 
-  // ── Summary stats ─────────────────────────────
+  // Bug 5 fix: exclude completed goals from the active count
+  const activeGoalCount = financialGoals.filter(g => g.status !== "completed").length;
   const onTrackCount = financialGoals.filter(g => computeStatus(g, snapshot.monthlySavings) === "on_track").length;
 
   return (
@@ -694,7 +785,8 @@ export function SmartGoalsScreen() {
             </div>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Total Goals", value: financialGoals.length, color: "text-white" },
+                // Bug 5 fix: show active (non-completed) goals count
+                { label: "Total Goals", value: activeGoalCount, color: "text-white" },
                 { label: "On Track",    value: onTrackCount, color: "text-emerald-400" },
                 { label: "Monthly Free", value: formatCurrency(Math.max(0, snapshot.monthlySavings - totalRequired), currencyConfig, true), color: snapshot.monthlySavings > totalRequired ? "text-emerald-400" : "text-rose-400" },
               ].map(({ label, value, color }) => (
@@ -709,7 +801,8 @@ export function SmartGoalsScreen() {
       </div>
 
       {/* ── AI Coach ── */}
-      <CoachBanner message={coachMsg} loading={coachLoading} isDark={isDark} />
+      {/* Bug 3 fix: suppress coach banner when there's a conflict shortfall — avoid contradictory messages */}
+      {!hasConflict && <CoachBanner message={coachMsg} loading={coachLoading} isDark={isDark} />}
 
       {/* ── Conflict Warning ── */}
       {hasConflict && (
@@ -828,6 +921,7 @@ export function SmartGoalsScreen() {
         monthlySavings={snapshot.monthlySavings}
         currencyConfig={currencyConfig}
         isDark={isDark}
+        onUpdate={updateFinancialGoalItem}
       />
     </motion.div>
   );

@@ -52,7 +52,12 @@ export function BudgetScreen() {
             </p>
             <p className="text-white text-3xl font-black">{formatCurrency(totalAllocated, currencyConfig)}</p>
             <div className="flex items-center gap-2 mt-2">
-              {exceededCount > 0 ? (
+              {/* Bug 6 fix: only show status badge if there are actual budgets */}
+              {budgets.length === 0 ? (
+                <div className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full">
+                  <span className="text-white/60 text-[10px] font-bold">No budgets set</span>
+                </div>
+              ) : exceededCount > 0 ? (
                 <div className="flex items-center gap-1 bg-rose-500/20 px-2 py-0.5 rounded-full">
                   <Flame size={12} className="text-rose-400" />
                   <span className="text-rose-400 text-[10px] font-bold">{exceededCount} Exceeded</span>
@@ -137,8 +142,30 @@ export function BudgetScreen() {
       </div>
 
       <div className="mx-5 space-y-4">
+        {/* Bug 6 fix: show empty state when no budgets exist */}
+        {budgets.length === 0 && (
+          <div className={cn(
+            "rounded-3xl border p-10 text-center",
+            isDark ? "bg-slate-900/40 border-white/[0.06]" : "bg-white/60 border-slate-100"
+          )}>
+            <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">💰</span>
+            </div>
+            <h3 className={cn("text-base font-black mb-2", isDark ? "text-white" : "text-slate-900")}>No Budgets Set</h3>
+            <p className={cn("text-xs font-medium leading-relaxed mb-5 max-w-[220px] mx-auto", isDark ? "text-slate-500" : "text-slate-400")}>
+              Set spending limits for your categories to track and control your monthly expenses.
+            </p>
+            <button
+              onClick={() => setShowAddBudget(true)}
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs font-black shadow-lg shadow-indigo-500/30 flex items-center gap-2 mx-auto"
+            >
+              <Plus size={14} /> Set First Budget
+            </button>
+          </div>
+        )}
         {budgets.map((budget) => {
-          const pct = Math.round((budget.spent / budget.limit) * 100);
+          // Bug 6 fix: guard against limit=0 division
+          const pct = budget.limit > 0 ? Math.round((budget.spent / budget.limit) * 100) : 0;
           const isExceeded = budget.spent > budget.limit;
 
           return (

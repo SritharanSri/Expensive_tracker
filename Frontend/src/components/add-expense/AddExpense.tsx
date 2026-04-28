@@ -328,6 +328,13 @@ export function AddExpense() {
               <span className={cn("italic font-bold block mt-1 whitespace-nowrap", isDark ? "text-emerald-400" : "text-emerald-600")}>
                 "Today income is 7500 rupees"
               </span>
+              {/* Rule 5: SL / Tamil examples */}
+              <span className={cn("italic font-bold block mt-1 whitespace-nowrap text-[11px]", isDark ? "text-violet-400" : "text-violet-600")}>
+                "Petrol ku 2000 kuduthen"
+              </span>
+              <span className={cn("italic font-bold block mt-0.5 whitespace-nowrap text-[11px]", isDark ? "text-violet-400" : "text-violet-600")}>
+                "Samba rice 800 vaangitten"
+              </span>
             </p>
 
             <div className="relative mb-8 mt-4">
@@ -576,9 +583,9 @@ export function AddExpense() {
         </div>
       </GlassCard>
 
-      {/* Quick Amount Chips */}
+      {/* Quick Amount Chips — Rule 3: dynamic based on income vs expense mode */}
       <div className="mx-5 mb-4 flex gap-2">
-        {["100", "500", "1000"].map((amt) => (
+        {(isIncome ? ["5000", "10000", "50000"] : ["100", "500", "1000"]).map((amt) => (
           <motion.button
             key={amt}
             whileTap={{ scale: 0.95 }}
@@ -590,7 +597,7 @@ export function AddExpense() {
                 : isDark ? "bg-slate-800 border-white/10 text-slate-400" : "bg-white border-slate-200 text-slate-500"
             )}
           >
-            {currencyConfig.symbol}{amt}
+            {currencyConfig.symbol}{Number(amt).toLocaleString()}
           </motion.button>
         ))}
       </div>

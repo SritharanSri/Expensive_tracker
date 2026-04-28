@@ -1,8 +1,6 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getRealExpenses } from "@/lib/utils";
 import { useApp } from "@/context/AppContext";
 import { TopBar } from "@/components/layout/TopBar";
 import { GlassCard } from "@/components/ui/Cards";
@@ -13,7 +11,7 @@ import {
   ChevronRight, Globe, Palette, Download, LogOut,
   User, Star, Check, Globe2, Languages, ShieldCheck, Crown,
   Zap, Bot, Mic, ScanLine, Target, MessageSquare, BarChart3,
-  BrainCircuit, Lock
+  BrainCircuit, Lock, FileText, TrendingUp
 } from "lucide-react";
 
 interface ToggleProps {
@@ -96,12 +94,82 @@ export function SettingsScreen() {
     automationEnabled, toggleAutomation, simulateSms,
     t, user, signOut, triggerPremiumModal, trackPremiumClick,
     aiToolUsageCount, aiQueryCount, financialGoals,
-    addTransaction, addNotification
+    addTransaction, addNotification, transactions,
   } = useApp();
 
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showSignOut, setShowSignOut] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState("");
+  const [exportEndDate, setExportEndDate] = useState("");
+  const [selectedBank, setSelectedBank] = useState("HNB");
+  const [testSmsInput, setTestSmsInput] = useState("");
+  const [showTestSms, setShowTestSms] = useState(false);
+
+  // Bug 7 fix: compute monthly free using real expenses (not goal contributions)
+  const monthlySnapshot = useMemo(() => {
+    const now = new Date();
+    const thisMonth = transactions.filter((tx) => {
+      const d = new Date(tx.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const income = thisMonth.filter(t => t.type === "income").reduce((a, b) => a + b.amount, 0);
+    const expenses = getRealExpenses(thisMonth).reduce((a, b) => a + b.amount, 0);
+    const goalSum = financialGoals.reduce((s, g) => s + (g.monthlyRequired || 0), 0);
+    const monthlyFree = income - expenses - goalSum;
+    return { income, expenses, monthlyFree };
+  }, [transactions, financialGoals]);
+
+  // Feature 3: CSV export helper
+  const handleExport = () => {
+    const now = new Date();
+    let filtered = transactions;
+
+    if (!isPremium) {
+      // Free: current month only
+      filtered = transactions.filter((tx) => {
+        const d = new Date(tx.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+    } else if (exportStartDate && exportEndDate) {
+      const start = new Date(exportStartDate);
+      const end = new Date(exportEndDate);
+      end.setHours(23, 59, 59);
+      filtered = transactions.filter((tx) => {
+        const d = new Date(tx.date);
+        return d >= start && d <= end;
+      });
+    }
+
+    // Build CSV rows
+    const escape = (val: string | number) => {
+      const s = String(val);
+      return s.includes(",") || s.includes('"') || s.includes("\n")
+        ? `"${s.replace(/"/g, '""')}"`
+        : s;
+    };
+    const headers = ["Date", "Title", "Category", "Type", "Amount (" + currencyConfig.code + ")", "Note"];
+    const rows = filtered.map((tx) => [
+      new Date(tx.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+      tx.title,
+      tx.category,
+      tx.type,
+      tx.amount.toFixed(2),
+      tx.note || "",
+    ].map(escape).join(","));
+
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `spendly-expenses-${now.toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addNotification({ title: "Export Complete", desc: `${filtered.length} transactions exported`, icon: "📥", color: "#10B981" });
+    setShowExport(false);
+  };
 
 
   const sectionClass = cn(
@@ -285,6 +353,27 @@ export function SettingsScreen() {
       <div className="mx-5 mb-6">
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1">{t("settings_automation")}</p>
         <div className={sectionClass}>
+          {/* Rule 5: SL Bank selector */}
+          <div className="px-5 py-3.5">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Bank (for SMS parsing)</p>
+            <div className="flex gap-2">
+              {["HNB", "Commercial", "BOC", "Sampath", "NSB"].map((bank) => (
+                <button
+                  key={bank}
+                  onClick={() => setSelectedBank(bank)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl border text-[10px] font-black transition-all",
+                    selectedBank === bank
+                      ? "bg-indigo-600 border-indigo-600 text-white"
+                      : isDark ? "bg-white/5 border-white/10 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"
+                  )}
+                >
+                  {bank}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="h-px mx-5 bg-slate-200 dark:bg-white/5" />
           <SettingRow
             icon={<Zap size={18} className="text-indigo-500" />}
             iconBg="rgba(99,102,241,0.1)"
@@ -316,6 +405,49 @@ export function SettingsScreen() {
             isDark={isDark}
             onClick={simulateSms}
           />
+          <div className="h-px mx-5 bg-slate-200 dark:bg-white/5" />
+          {/* Rule 5: Test Parse */}
+          <div className="px-5 py-3.5">
+            <button
+              onClick={() => setShowTestSms(!showTestSms)}
+              className={cn(
+                "text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5",
+                isDark ? "text-slate-400" : "text-slate-500"
+              )}
+            >
+              <FileText size={12} /> Test Parse SMS
+            </button>
+            <AnimatePresence>
+              {showTestSms && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                  <div className="mt-3 space-y-2">
+                    <textarea
+                      value={testSmsInput}
+                      onChange={(e) => setTestSmsInput(e.target.value)}
+                      placeholder={`Paste ${selectedBank} SMS here...\ne.g. "A/C xx1234 debited Rs.2,500 for CEYPETCO"`}
+                      rows={3}
+                      className={cn(
+                        "w-full p-3 rounded-2xl border text-xs font-medium outline-none resize-none",
+                        isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600" : "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+                      )}
+                    />
+                    <button
+                      onClick={() => {
+                        // Simple amount extraction for demo
+                        const match = testSmsInput.match(/Rs\.?\s?([\d,]+)/i) || testSmsInput.match(/LKR\s?([\d,]+)/i);
+                        const amount = match ? parseFloat(match[1].replace(/,/g, "")) : 0;
+                        const parsed = amount > 0 ? `✅ Detected: LKR ${amount.toLocaleString()}` : "❌ No amount found";
+                        addNotification({ title: "SMS Parse Test", desc: parsed, icon: "📱", color: "#6366F1" });
+                      }}
+                      className="w-full py-2.5 rounded-2xl bg-indigo-600 text-white text-[11px] font-black"
+                    >
+                      Parse & Preview
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
@@ -341,6 +473,38 @@ export function SettingsScreen() {
             label="Security Lock"
             subtitle="Biometric & PIN active"
             isDark={isDark}
+          />
+          <div className="h-px mx-5 bg-slate-200 dark:bg-white/5" />
+          {/* Bug 7 fix: show real monthly free income */}
+          <SettingRow
+            icon={<TrendingUp size={18} className="text-emerald-500" />}
+            iconBg="rgba(16,185,129,0.1)"
+            label="Monthly Disposable"
+            subtitle="Free after expenses & goals"
+            isDark={isDark}
+            right={
+              <span className={cn(
+                "text-xs font-black",
+                monthlySnapshot.monthlyFree >= 0 ? "text-emerald-500" : "text-rose-500"
+              )}>
+                {currencyConfig.symbol}{Math.abs(Math.round(monthlySnapshot.monthlyFree)).toLocaleString()}
+              </span>
+            }
+          />
+        </div>
+      </div>
+
+      {/* Data Export — Feature 3 */}
+      <div className="mx-5 mb-6">
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1">Data &amp; Export</p>
+        <div className={sectionClass}>
+          <SettingRow
+            icon={<Download size={18} className="text-sky-500" />}
+            iconBg="rgba(14,165,233,0.1)"
+            label="Export Data"
+            subtitle={isPremium ? "Full history as CSV" : "Current month — upgrade for full history"}
+            isDark={isDark}
+            onClick={() => setShowExport(true)}
           />
         </div>
       </div>
@@ -404,7 +568,53 @@ export function SettingsScreen() {
         </button>
       </div>
 
-      {/* Bottom Sheets */}
+      {/* Export Bottom Sheet — Feature 3 */}
+      <BottomSheet
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        isDark={isDark}
+        title="Export Transactions"
+        subtitle={isPremium ? "Select date range" : "Free plan: current month only"}
+      >
+        <div className="px-5 pb-10 space-y-4">
+          {isPremium && (
+            <>
+              <div className={cn("p-4 rounded-3xl border", isDark ? "bg-slate-900/60 border-white/[0.08]" : "bg-white border-slate-100 shadow-sm")}>
+                <p className="text-[10px] font-black uppercase text-slate-500 mb-3">From</p>
+                <input
+                  type="date"
+                  value={exportStartDate}
+                  onChange={(e) => setExportStartDate(e.target.value)}
+                  className={cn("w-full text-sm font-bold bg-transparent outline-none", isDark ? "text-white" : "text-slate-900")}
+                />
+              </div>
+              <div className={cn("p-4 rounded-3xl border", isDark ? "bg-slate-900/60 border-white/[0.08]" : "bg-white border-slate-100 shadow-sm")}>
+                <p className="text-[10px] font-black uppercase text-slate-500 mb-3">To</p>
+                <input
+                  type="date"
+                  value={exportEndDate}
+                  onChange={(e) => setExportEndDate(e.target.value)}
+                  className={cn("w-full text-sm font-bold bg-transparent outline-none", isDark ? "text-white" : "text-slate-900")}
+                />
+              </div>
+            </>
+          )}
+          {!isPremium && (
+            <div className={cn("p-4 rounded-3xl border flex items-center gap-3", isDark ? "bg-amber-500/5 border-amber-500/15" : "bg-amber-50 border-amber-100")}>
+              <Crown size={16} className="text-amber-500 flex-shrink-0" />
+              <p className="text-xs text-amber-500 font-medium">Upgrade to Premium to export your full transaction history — useful for tax filing & CA reports.</p>
+            </div>
+          )}
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleExport}
+            className="w-full py-4 rounded-3xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30"
+          >
+            <Download size={16} /> Download CSV
+          </motion.button>
+        </div>
+      </BottomSheet>
+
       <BottomSheet 
         open={showCountryPicker} 
         onClose={() => setShowCountryPicker(false)} 

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getRealExpenses } from "@/lib/utils";
 import { useApp } from "@/context/AppContext";
 import { formatCurrency } from "@/lib/currency";
 import { TopBar } from "@/components/layout/TopBar";
@@ -55,6 +55,8 @@ export function ReportsScreen() {
         data[label] = { label, income: 0, expense: 0, timestamp: i };
       }
 
+      // Only count real expenses (no goal contributions / transfers)
+      const realTxs = getRealExpenses(transactions);
       transactions.forEach((tx) => {
         const d = new Date(tx.date);
         // Check if transaction is in the current month
@@ -62,7 +64,14 @@ export function ReportsScreen() {
           const weekIndex = Math.min(Math.floor((d.getDate() - 1) / 7), 3);
           const label = `Week ${weekIndex + 1}`;
           if (tx.type === "income") data[label].income += tx.amount;
-          else if (tx.type === "expense") data[label].expense += tx.amount;
+        }
+      });
+      realTxs.forEach((tx) => {
+        const d = new Date(tx.date);
+        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+          const weekIndex = Math.min(Math.floor((d.getDate() - 1) / 7), 3);
+          const label = `Week ${weekIndex + 1}`;
+          data[label].expense += tx.amount;
         }
       });
     } else {
@@ -76,13 +85,18 @@ export function ReportsScreen() {
         data[key] = { label: `${m} ${year}`, income: 0, expense: 0, timestamp: d.getTime() };
       }
 
+      const realTxs3M = getRealExpenses(transactions);
       transactions.forEach((tx) => {
         const d = new Date(tx.date);
         const key = `${d.getFullYear()}-${d.getMonth()}`;
         if (data[key]) {
           if (tx.type === "income") data[key].income += tx.amount;
-          else if (tx.type === "expense") data[key].expense += tx.amount;
         }
+      });
+      realTxs3M.forEach((tx) => {
+        const d = new Date(tx.date);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        if (data[key]) data[key].expense += tx.amount;
       });
     }
 
@@ -97,14 +111,15 @@ export function ReportsScreen() {
   }, [transactions, monthCount]);
 
   const totalIncome = periodTransactions.filter(t => t.type === "income").reduce((a, b) => a + b.amount, 0);
-  const totalExpense = periodTransactions.filter(t => t.type === "expense").reduce((a, b) => a + b.amount, 0);
+  // Bug 2 fix: only count real expenses, not goal contributions or transfers
+  const totalExpense = getRealExpenses(periodTransactions).reduce((a, b) => a + b.amount, 0);
   const savings = totalIncome - totalExpense;
   const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
 
-  // Pie Data (Category Distribution) for selected period
+  // Pie Data (Category Distribution) — Bug 2 fix: use real expenses only
   const pieData = useMemo(() => {
     const counts: Record<string, number> = {};
-    periodTransactions.filter(t => t.type === "expense").forEach((tx) => {
+    getRealExpenses(periodTransactions).forEach((tx) => {
       counts[tx.category] = (counts[tx.category] || 0) + tx.amount;
     });
 
@@ -299,11 +314,13 @@ export function ReportsScreen() {
                 </PieChart>
               </ResponsiveContainer>
               
-              {/* Center Info */}
+              {/* Center Info — Bug 1 fix: show SAVED % not OUT % */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-[8px] font-black uppercase text-slate-500">Savings</p>
+                <p className="text-[8px] font-black uppercase text-slate-500">
+                  {savingsRate >= 0 ? "SAVED" : "DEFICIT"}
+                </p>
                 <p className={cn("text-lg font-black", savingsRate > 0 ? "text-emerald-500" : "text-rose-500")}>
-                  {Math.round(savingsRate)}%
+                  {Math.abs(Math.round(savingsRate))}%
                 </p>
               </div>
             </div>
